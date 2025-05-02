@@ -1,0 +1,16 @@
+{
+  "type": "number",
+  "title": { 
+    "en": "CPU Usage", 
+    "nl": "CPU Gebruik" 
+  },
+  "getable": true, 
+  "setable": false,
+  "units": "%", 
+  "decimals": 1, 
+  "min": 0, 
+  "max": 100,
+  "uiComponent": "sensor",
+  "icon": "assets/nodes.svg",
+  "insights": true
+}

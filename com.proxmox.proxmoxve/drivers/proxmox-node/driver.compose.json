@@ -1,0 +1,64 @@
+{
+  "name": {
+    "en": "Proxmox Node",
+    "nl": "Proxmox Node"
+  },
+  "class": "other",
+  "capabilities": [
+    "measure_cpu_usage_perc",
+    "measure_memory_usage_perc"
+  ],
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "lan"
+  ],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "settings": [
+    {
+      "id": "poll_interval_node",
+      "type": "dropdown",
+      "label": {
+        "en": "Polling Interval (Node)",
+        "nl": "Polling Interval (Node)"
+      },
+      "hint": {
+        "en": "Update interval for node stats in minutes. 0 disables polling.",
+        "nl": "Update interval voor node stats in minuten. 0 schakelt polling uit."
+      },
+      "value": "1",
+      "values": [
+        { "id": "0",   "label": { "en": "Disabled", "nl": "Uitgeschakeld" } },
+        { "id": "0.5", "label": { "en": "30 Seconds", "nl": "30 Seconden" } },
+        { "id": "1",   "label": { "en": "1 Minute", "nl": "1 Minuut" } },
+        { "id": "5",   "label": { "en": "5 Minutes", "nl": "5 Minuten" } },
+        { "id": "10",  "label": { "en": "10 Minutes", "nl": "10 Minuten" } }
+      ]
+    }
+  ],
+  "pair": [
+    {
+      "id": "list_all_nodes",
+      "template": "list_devices",
+      "title": {
+        "en": "Select Node(s) to Add",
+        "nl": "Selecteer Node(s) om Toe te Voegen"
+      },
+      "navigation": {
+        "next": "add_devices"
+      },
+      "options": {
+        "showLoader": true
+      }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ]
+}

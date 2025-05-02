@@ -1,0 +1,20 @@
+{
+  "type": "boolean",
+  "title": {
+    "en": "Using Fallback Connection",
+    "nl": "Gebruikt Fallback Verbinding"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insightsTitleTrue": {
+      "en": "Connection switched to fallback node",
+      "nl": "Verbinding overgeschakeld naar fallback node"
+   },
+   "insightsTitleFalse": {
+      "en": "Connection restored to primary node",
+      "nl": "Verbinding hersteld naar primaire node"
+   },
+  "icon": "assets/virtual-machine.svg",
+  "insights": true
+}

@@ -1,0 +1,18 @@
+    {
+        "actions": [
+          {
+            "id": "shutdown_node",
+            "title": {
+              "en": "Shutdown Node (Graceful)",
+              "nl": "Node Uitschakelen (Graceful)"
+            }
+          },
+          {
+            "id": "stop_node",
+            "title": {
+              "en": "Stop Node (Force)",
+              "nl": "Node Stoppen (Forceer)"
+            }
+          }
+        ]
+      }  

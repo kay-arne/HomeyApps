@@ -1,0 +1,14 @@
+{
+    "type": "number",
+    "title": {
+      "en": "Active VM Count",
+      "nl": "actieve VM's"
+    },
+    "getable": true,
+    "setable": false,
+    "decimals": 0,
+    "min": 0,
+    "uiComponent": "sensor",
+    "icon": "assets/virtual-machine.svg",
+    "insights": true
+}

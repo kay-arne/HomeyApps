@@ -1,0 +1,110 @@
+{
+  "name": {
+    "en": "Proxmox Cluster",
+    "nl": "Proxmox Cluster"
+  },
+  "class": "service",
+  "capabilities": [
+    "measure_node_count",
+    "measure_vm_count",
+    "measure_lxc_count",
+    "alarm_connection_fallback",
+    "status_connected_host"
+  ],
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "lan"
+  ],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "settings": [
+    {
+      "id": "hostname",
+      "type": "text",
+      "label": {
+        "en": "Hostname or IP Address",
+        "nl": "Hostnaam of IP-adres"
+      },
+      "hint": {
+        "en": "e.g., pve.yourdomain.local or 192.168.1.100",
+        "nl": "bv. pve.yourdomain.local of 192.168.1.100"
+      },
+      "value": ""
+    },
+    {
+      "id": "username",
+      "type": "text",
+      "label": {
+        "en": "Username",
+        "nl": "Gebruikersnaam"
+      },
+      "hint": {
+        "en": "Proxmox user with API access (e.g., homey@pve or root@pam)",
+        "nl": "Proxmox gebruiker met API toegang (bv. homey@pve of root@pam)"
+      },
+      "value": "root@pam"
+    },
+    {
+      "id": "api_token_id",
+      "type": "text",
+      "label": {
+        "en": "API Token ID",
+        "nl": "API Token ID"
+      },
+      "hint": {
+        "en": "Full API Token ID (e.g., homey@pve!mytoken)",
+        "nl": "Volledige API Token ID (bv. homey@pve!mytoken)"
+      },
+      "value": ""
+    },
+    {
+      "id": "api_token_secret",
+      "type": "password",
+      "label": {
+        "en": "API Token Secret",
+        "nl": "API Token Secret"
+      },
+      "hint": {
+        "en": "The secret value for the API token",
+        "nl": "De geheime waarde voor het API token"
+      }
+    },
+    {
+      "id": "poll_interval_cluster",
+      "type": "dropdown",
+      "label": {
+        "en": "Polling Interval (Cluster)",
+        "nl": "Polling Interval (Cluster)"
+      },
+      "hint": {
+        "en": "Update interval for cluster stats, 0 disables polling.",
+        "nl": "Update interval voor cluster stats, 0 schakelt polling uit."
+      },
+      "value": "5",
+      "values": [
+        { "id": "0",   "label": { "en": "Disabled", "nl": "Uitgeschakeld" } },
+        { "id": "0.5", "label": { "en": "30 Seconds", "nl": "30 Seconden" } },
+        { "id": "1",   "label": { "en": "1 Minute", "nl": "1 Minuut" } },
+        { "id": "5",   "label": { "en": "5 Minutes", "nl": "5 Minuten" } },
+        { "id": "10",  "label": { "en": "10 Minutes", "nl": "10 Minuten" } }
+      ]
+    }
+  ],
+  "pair": [
+    {
+      "id": "list_devices",
+      "template": "list_devices",
+      "navigation": { "next": "add_devices" },
+      "options": { "showLoader": false }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ]
+}

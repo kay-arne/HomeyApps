@@ -1,0 +1,537 @@
+{
+  "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
+  "id": "com.proxmox.proxmoxve",
+  "version": "0.8.2",
+  "compatibility": ">=12.3.0",
+  "sdk": 3,
+  "brandColor": "#D76300",
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "en": "Proxmox VE",
+    "nl": "Proxmox VE"
+  },
+  "description": {
+    "en": "Integrates Proxmox VE with Homey",
+    "nl": "Integreert Proxmox VE met Homey"
+  },
+  "languages": [
+    "en",
+    "nl"
+  ],
+  "category": "tools",
+  "permissions": [],
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "author": {
+    "name": "Kay-Arne van Dalfsen",
+    "email": "kay-arne@kay-arne.eu"
+  },
+  "flow": {
+    "conditions": [
+      {
+        "id": "vm_is_running",
+        "title": {
+          "en": "VM/Container is running",
+          "nl": "VM/Container draait"
+        },
+        "titleFormatted": {
+          "en": "[[target_vm]] is running",
+          "nl": "[[target_vm]] draait"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "start_vm",
+        "title": {
+          "en": "Start VM/Container",
+          "nl": "Start VM/Container"
+        },
+        "titleFormatted": {
+          "en": "Start [[target_vm]]",
+          "nl": "Start [[target_vm]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search for VM/Container...",
+              "nl": "Typ om VM/Container te zoeken..."
+            }
+          }
+        ]
+      },
+      {
+        "id": "stop_vm",
+        "title": {
+          "en": "Stop VM/Container (Force)",
+          "nl": "Stop VM/Container (Forceer)"
+        },
+        "titleFormatted": {
+          "en": "Stop [[target_vm]] (Force)",
+          "nl": "Stop [[target_vm]] (Forceer)"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          }
+        ]
+      },
+      {
+        "id": "shutdown_vm",
+        "title": {
+          "en": "Shutdown VM/Container (Graceful)",
+          "nl": "VM/Container Uitschakelen (Graceful)"
+        },
+        "titleFormatted": {
+          "en": "Shutdown [[target_vm]] (Graceful)",
+          "nl": "Schakel [[target_vm]] uit (Graceful)"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          }
+        ]
+      },
+      {
+        "id": "shutdown_node",
+        "title": {
+          "en": "Shutdown Node (Graceful)",
+          "nl": "Node Uitschakelen (Graceful)"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          }
+        ]
+      },
+      {
+        "id": "stop_node",
+        "title": {
+          "en": "Stop Node (Force)",
+          "nl": "Node Stoppen (Forceer)"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          }
+        ]
+      }
+    ]
+  },
+  "drivers": [
+    {
+      "name": {
+        "en": "Proxmox Cluster",
+        "nl": "Proxmox Cluster"
+      },
+      "class": "service",
+      "capabilities": [
+        "measure_node_count",
+        "measure_vm_count",
+        "measure_lxc_count",
+        "alarm_connection_fallback",
+        "status_connected_host"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "images": {
+        "small": "/drivers/proxmox-cluster/assets/images/small.png",
+        "large": "/drivers/proxmox-cluster/assets/images/large.png",
+        "xlarge": "/drivers/proxmox-cluster/assets/images/xlarge.png"
+      },
+      "settings": [
+        {
+          "id": "hostname",
+          "type": "text",
+          "label": {
+            "en": "Hostname or IP Address",
+            "nl": "Hostnaam of IP-adres"
+          },
+          "hint": {
+            "en": "e.g., pve.yourdomain.local or 192.168.1.100",
+            "nl": "bv. pve.yourdomain.local of 192.168.1.100"
+          },
+          "value": ""
+        },
+        {
+          "id": "username",
+          "type": "text",
+          "label": {
+            "en": "Username",
+            "nl": "Gebruikersnaam"
+          },
+          "hint": {
+            "en": "Proxmox user with API access (e.g., homey@pve or root@pam)",
+            "nl": "Proxmox gebruiker met API toegang (bv. homey@pve of root@pam)"
+          },
+          "value": "root@pam"
+        },
+        {
+          "id": "api_token_id",
+          "type": "text",
+          "label": {
+            "en": "API Token ID",
+            "nl": "API Token ID"
+          },
+          "hint": {
+            "en": "Full API Token ID (e.g., homey@pve!mytoken)",
+            "nl": "Volledige API Token ID (bv. homey@pve!mytoken)"
+          },
+          "value": ""
+        },
+        {
+          "id": "api_token_secret",
+          "type": "password",
+          "label": {
+            "en": "API Token Secret",
+            "nl": "API Token Secret"
+          },
+          "hint": {
+            "en": "The secret value for the API token",
+            "nl": "De geheime waarde voor het API token"
+          }
+        },
+        {
+          "id": "poll_interval_cluster",
+          "type": "dropdown",
+          "label": {
+            "en": "Polling Interval (Cluster)",
+            "nl": "Polling Interval (Cluster)"
+          },
+          "hint": {
+            "en": "Update interval for cluster stats, 0 disables polling.",
+            "nl": "Update interval voor cluster stats, 0 schakelt polling uit."
+          },
+          "value": "5",
+          "values": [
+            {
+              "id": "0",
+              "label": {
+                "en": "Disabled",
+                "nl": "Uitgeschakeld"
+              }
+            },
+            {
+              "id": "0.5",
+              "label": {
+                "en": "30 Seconds",
+                "nl": "30 Seconden"
+              }
+            },
+            {
+              "id": "1",
+              "label": {
+                "en": "1 Minute",
+                "nl": "1 Minuut"
+              }
+            },
+            {
+              "id": "5",
+              "label": {
+                "en": "5 Minutes",
+                "nl": "5 Minuten"
+              }
+            },
+            {
+              "id": "10",
+              "label": {
+                "en": "10 Minutes",
+                "nl": "10 Minuten"
+              }
+            }
+          ]
+        }
+      ],
+      "pair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          },
+          "options": {
+            "showLoader": false
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "proxmox-cluster"
+    },
+    {
+      "name": {
+        "en": "Proxmox Node",
+        "nl": "Proxmox Node"
+      },
+      "class": "other",
+      "capabilities": [
+        "measure_cpu_usage_perc",
+        "measure_memory_usage_perc"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "images": {
+        "small": "/drivers/proxmox-node/assets/images/small.png",
+        "large": "/drivers/proxmox-node/assets/images/large.png",
+        "xlarge": "/drivers/proxmox-node/assets/images/xlarge.png"
+      },
+      "settings": [
+        {
+          "id": "poll_interval_node",
+          "type": "dropdown",
+          "label": {
+            "en": "Polling Interval (Node)",
+            "nl": "Polling Interval (Node)"
+          },
+          "hint": {
+            "en": "Update interval for node stats in minutes. 0 disables polling.",
+            "nl": "Update interval voor node stats in minuten. 0 schakelt polling uit."
+          },
+          "value": "1",
+          "values": [
+            {
+              "id": "0",
+              "label": {
+                "en": "Disabled",
+                "nl": "Uitgeschakeld"
+              }
+            },
+            {
+              "id": "0.5",
+              "label": {
+                "en": "30 Seconds",
+                "nl": "30 Seconden"
+              }
+            },
+            {
+              "id": "1",
+              "label": {
+                "en": "1 Minute",
+                "nl": "1 Minuut"
+              }
+            },
+            {
+              "id": "5",
+              "label": {
+                "en": "5 Minutes",
+                "nl": "5 Minuten"
+              }
+            },
+            {
+              "id": "10",
+              "label": {
+                "en": "10 Minutes",
+                "nl": "10 Minuten"
+              }
+            }
+          ]
+        }
+      ],
+      "pair": [
+        {
+          "id": "list_all_nodes",
+          "template": "list_devices",
+          "title": {
+            "en": "Select Node(s) to Add",
+            "nl": "Selecteer Node(s) om Toe te Voegen"
+          },
+          "navigation": {
+            "next": "add_devices"
+          },
+          "options": {
+            "showLoader": true
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "proxmox-node"
+    }
+  ],
+  "capabilities": {
+    "alarm_connection_fallback": {
+      "type": "boolean",
+      "title": {
+        "en": "Using Fallback Connection",
+        "nl": "Gebruikt Fallback Verbinding"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insightsTitleTrue": {
+        "en": "Connection switched to fallback node",
+        "nl": "Verbinding overgeschakeld naar fallback node"
+      },
+      "insightsTitleFalse": {
+        "en": "Connection restored to primary node",
+        "nl": "Verbinding hersteld naar primaire node"
+      },
+      "icon": "assets/virtual-machine.svg",
+      "insights": true
+    },
+    "measure_cpu_usage_perc": {
+      "type": "number",
+      "title": {
+        "en": "CPU Usage",
+        "nl": "CPU Gebruik"
+      },
+      "getable": true,
+      "setable": false,
+      "units": "%",
+      "decimals": 1,
+      "min": 0,
+      "max": 100,
+      "uiComponent": "sensor",
+      "icon": "assets/nodes.svg",
+      "insights": true
+    },
+    "measure_lxc_count": {
+      "type": "number",
+      "title": {
+        "en": "Active LXC Count",
+        "nl": "Actieve LXC's"
+      },
+      "getable": true,
+      "setable": false,
+      "decimals": 0,
+      "min": 0,
+      "uiComponent": "sensor",
+      "icon": "assets/container.svg",
+      "insights": true
+    },
+    "measure_memory_usage_perc": {
+      "type": "number",
+      "title": {
+        "en": "Memory Usage",
+        "nl": "Geheugengebruik"
+      },
+      "getable": true,
+      "setable": false,
+      "units": "%",
+      "decimals": 1,
+      "min": 0,
+      "max": 100,
+      "uiComponent": "sensor",
+      "icon": "assets/nodes.svg",
+      "insights": true
+    },
+    "measure_node_count": {
+      "type": "number",
+      "title": {
+        "en": "Node count",
+        "nl": "Aantal Nodes"
+      },
+      "getable": true,
+      "setable": false,
+      "decimals": 0,
+      "min": 0,
+      "uiComponent": "sensor",
+      "icon": "assets/nodes.svg",
+      "insights": true
+    },
+    "measure_vm_count": {
+      "type": "number",
+      "title": {
+        "en": "Active VM Count",
+        "nl": "actieve VM's"
+      },
+      "getable": true,
+      "setable": false,
+      "decimals": 0,
+      "min": 0,
+      "uiComponent": "sensor",
+      "icon": "assets/virtual-machine.svg",
+      "insights": true
+    },
+    "status_connected_host": {
+      "type": "string",
+      "title": {
+        "en": "Connected via Host",
+        "nl": "Verbonden via Host"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "icon": "assets/virtual-machine.svg"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build artifacts (als je die later gebruikt)
+dist/
+build/
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Homey specific (soms gegenereerd)
+app.json # De gegenereerde in de root, NIET die in .homeycompose!

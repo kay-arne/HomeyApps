@@ -1,0 +1,14 @@
+{
+    "type": "number",
+    "title": {
+      "en": "Node count",
+      "nl": "Aantal Nodes"
+    },
+    "getable": true,
+    "setable": false,
+    "decimals": 0,
+    "min": 0,
+    "uiComponent": "sensor",
+    "icon": "assets/nodes.svg",
+    "insights": true
+}

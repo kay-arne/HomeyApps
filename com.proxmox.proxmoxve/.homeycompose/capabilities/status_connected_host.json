@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "title": {
+    "en": "Connected via Host",
+    "nl": "Verbonden via Host"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "icon": "assets/virtual-machine.svg"
+}

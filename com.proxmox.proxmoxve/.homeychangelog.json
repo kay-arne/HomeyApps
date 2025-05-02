@@ -1,0 +1,11 @@
+{
+  "0.8.0": {
+    "en": "First publication of the app in test."
+  },
+  "0.8.1": {
+    "en": "Updates to cluster connection and resilience, the app now collects ip adresses of all te nodes in the cluster and uses these adresses as fallback for when the original ip/hostname is not reachable. Added capabilities for fallback connection and active address."
+  },
+  "0.8.2": {
+    "en": "Fixed flow and device cards issues when multiple devices are created. Added shutdown node device cards."
+  }
+}

@@ -6,7 +6,8 @@
   "class": "other",
   "capabilities": [
     "measure_cpu_usage_perc",
-    "measure_memory_usage_perc"
+    "measure_memory_usage_perc",
+    "alarm_node_status"
   ],
   "platforms": [
     "local"

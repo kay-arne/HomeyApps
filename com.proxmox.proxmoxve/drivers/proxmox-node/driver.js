@@ -101,7 +101,7 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
                  serverId: clusterDeviceId // Link to the cluster device
                },
                // Define capabilities for the node device being added
-               capabilities: ['measure_memory_usage_perc', 'measure_cpu_usage_perc'],
+               capabilities: ['measure_memory_usage_perc', 'measure_cpu_usage_perc','alarm_node_status'],
                icon: "/server.svg",
              });
           } // else { log skipping }

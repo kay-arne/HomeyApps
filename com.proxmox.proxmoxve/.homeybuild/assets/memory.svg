@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+
+<svg
+   width="800px"
+   height="800px"
+   viewBox="-2.4 -2.4 28.80 28.80"
+   version="1.1"
+   fill="#000000"
+   transform="rotate(45)"
+   id="svg1"
+   sodipodi:docname="memory.svg"
+   inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.76"
+     inkscape:cx="401.31579"
+     inkscape:cy="399.34211"
+     inkscape:window-width="1512"
+     inkscape:window-height="916"
+     inkscape:window-x="0"
+     inkscape:window-y="38"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <g
+     id="SVGRepo_bgCarrier"
+     stroke-width="0" />
+  <g
+     id="SVGRepo_tracerCarrier"
+     stroke-linecap="round"
+     stroke-linejoin="round" />
+  <g
+     id="SVGRepo_iconCarrier"
+     style="stroke-width:1.00001;stroke-dasharray:none"
+     transform="matrix(0.90356576,0.90356576,-0.90356576,0.90356576,11.952631,-9.306827)">
+    <title
+       id="title1">icon/24/icon-memory</title>
+    <desc
+       id="desc1">Created with Sketch.</desc>
+    <defs
+       id="defs1" />
+    <g
+       id="Output-svg"
+       stroke-width="0.00024000000000000003"
+       fill="none"
+       fill-rule="evenodd"
+       style="stroke-width:1.00001;stroke-dasharray:none">
+      <g
+         id="out"
+         transform="translate(-654,-106)"
+         fill="#000000"
+         style="stroke-width:1.00001;stroke-dasharray:none">
+        <path
+           d="M 668.17,108.59667 656.59667,120.17 c -0.79556,0.79556 -0.79556,2.09778 0,2.89333 l 4.34,4.34 c 0.79555,0.79556 2.09777,0.79556 2.89333,0 l 2.35222,-2.35222 -1.08444,-1.08555 -2.35222,2.35222 c -0.19667,0.19666 -0.52778,0.19666 -0.72334,0 l -4.34,-4.34 c -0.19666,-0.19556 -0.19666,-0.52667 0,-0.72334 l 11.57222,-11.57333 c 0.19667,-0.19555 0.52778,-0.19555 0.72334,0 l 4.34,4.34 c 0.19666,0.19667 0.19666,0.52778 0,0.72333 l -2.35778,2.35889 1.08444,1.08445 2.35889,-2.35778 c 0.79556,-0.79556 0.79556,-2.09778 0,-2.89333 l -4.34,-4.34 c -0.79555,-0.79556 -2.09777,-0.79556 -2.89333,0 z m 2.47278,9.82377 -4.22889,4.22889 1.08555,1.08445 4.22889,-4.22778 z m 1.25222,-4.27088 -1.41444,1.41444 -2.60334,-2.60222 1.41445,-1.41556 z m -2.77678,2.77677 -1.41444,1.41445 -2.60334,-2.60222 1.41445,-1.41556 z m -2.77689,2.77678 -1.41444,1.41445 -2.60333,-2.60223 1.41444,-1.41555 z m -2.77677,2.77689 -1.41445,1.41444 -2.60333,-2.60222 1.41444,-1.41555 z"
+           id="path"
+           style="stroke-width:1.00001;stroke-dasharray:none" />
+      </g>
+    </g>
+  </g>
+</svg>

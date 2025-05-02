@@ -11,6 +11,6 @@
   "min": 0, 
   "max": 100,
   "uiComponent": "sensor",
-  "icon": "assets/nodes.svg",
+  "icon": "assets/memory.svg",
   "insights": true
 }

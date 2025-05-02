@@ -1,0 +1,28 @@
+{
+    "type": "boolean",
+    "title": {
+      "en": "Node Offline",
+      "nl": "Node Offline"
+    },
+    "getable": true,
+    "setable": false,
+    "uiComponent": "sensor",
+    "insights": true,
+    "insightsTitleTrue": {
+        "en": "Node went offline",
+        "nl": "Node offline gegaan"
+     },
+     "insightsTitleFalse": {
+        "en": "Node went online",
+        "nl": "Node online gekomen"
+     },
+    "titleTrue": {
+        "en": "Offline",
+        "nl": "Offline"
+    },
+    "titleFalse": {
+        "en": "Online",
+        "nl": "Online"
+    },
+    "icon": "assets/network-disconnected.svg"
+  }

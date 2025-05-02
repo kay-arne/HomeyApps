@@ -12,26 +12,28 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
   async onInit() {
     const nodeName = this.getName();
     const nodeId = this.getData().id;
-    const serverId = this.getData().serverId; // Get serverId from data
+    const serverId = this.getData().serverId;
     this.log(`Initializing node: ${nodeName} (Node ID: ${nodeId}, Cluster ID: ${serverId})`);
     try {
       if (!serverId) {
           throw new Error('serverId is missing in device data. Please re-pair the node.');
       }
-      // Flow handlers are registered by the driver now
-      // this.registerFlowHandlers();
-      await this.updateNodeStatus(); // Initial status update
+      // Flow handlers are registered by the driver
+      await this.updateNodeStatus(); // Initial status update (sets availability and alarm status)
       this.startPolling(); // Start periodic updates
     } catch (error) {
       this.error(`Initialization Error for node [${nodeName}]:`, error);
-      await this.setUnavailable(error.message || 'Initialization failed').catch(this.error);
+      // Set initial state to offline (alarm on) but keep available if possible
+      await this._updateCapability('alarm_node_status', true).catch(this.error); // Set alarm ON
+      // Don't set unavailable on init error unless absolutely necessary
+      // await this.setUnavailable(error.message || 'Initialization failed').catch(this.error);
     }
   }
 
   async onAdded() {
     const nodeName = this.getName();
     const nodeId = this.getData().id;
-    const serverId = this.getData().serverId; // Get serverId from data
+    const serverId = this.getData().serverId;
     this.log(`Node device added: ${nodeName} (Node ID: ${nodeId}, Cluster ID: ${serverId})`);
     // Perform an initial status update shortly after adding
     this.homey.setTimeout(async () => {
@@ -56,7 +58,7 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
 
   startPolling(intervalMinutesSetting = null) {
     this.stopPolling();
-    const pollIntervalMinutes = intervalMinutesSetting ?? parseFloat(this.getSetting('poll_interval_node') || '5');
+    const pollIntervalMinutes = intervalMinutesSetting ?? parseFloat(this.getSetting('poll_interval_node') || '5'); // Default 5 min
     if (isNaN(pollIntervalMinutes) || pollIntervalMinutes <= 0) {
       this.log(`Node polling disabled for [${this.getName()}] (interval <= 0).`);
       return;
@@ -87,9 +89,16 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
           throw new Error('serverId not found in device data for this node.');
       }
       try {
-          return await this.homey.drivers.getDriver('proxmox-cluster').getDevice({ id: serverId });
+          // Get the specific cluster device instance using the retrieved ID
+          const clusterDevice = await this.homey.drivers.getDriver('proxmox-cluster').getDevice({ id: serverId });
+          // Check if the cluster device itself is available
+          if (!clusterDevice.getAvailable()) {
+              throw new Error(`Associated cluster device '${clusterDevice.getName()}' is currently unavailable.`);
+          }
+          return clusterDevice;
       } catch (error) {
-          this.error(`Could not retrieve cluster device (ID: ${serverId}) for node [${this.getName()}]:`, error);
+          this.error(`Could not retrieve or use cluster device (ID: ${serverId}) for node [${this.getName()}]:`, error);
+          // Throw user-friendly error (inline translated)
           throw new Error(JSON.stringify({ en: 'Associated cluster device unavailable.', nl: 'Gekoppeld cluster apparaat niet beschikbaar.' }));
       }
   }
@@ -102,42 +111,68 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
     this.log(`Updating status for node [${nodeName}]...`);
 
     try {
-      const clusterDevice = await this._getClusterDevice();
+      // Get the cluster device to use its API call method (which handles fallback)
+      const clusterDevice = await this._getClusterDevice(); // Throws if cluster unavailable
       const apiPath = `/api2/json/nodes/${nodeName}/status`;
-      // Use the cluster device's API call method (handles fallback)
+
+      // Use the cluster device's _executeApiCallWithFallback method
       const nodeStatusData = await clusterDevice._executeApiCallWithFallback(apiPath);
 
       if (nodeStatusData?.data) {
         const nodeData = nodeStatusData.data;
-        // Memory %
+
+        // --- Update Standard Capabilities ---
         const memUsed = nodeData.memory?.used || 0;
-        const memTotal = nodeData.memory?.total || 1;
+        const memTotal = nodeData.memory?.total || 1; // Avoid division by zero
         const memoryPerc = (memTotal > 0) ? parseFloat(((memUsed / memTotal) * 100).toFixed(1)) : 0;
         await this._updateCapability('measure_memory_usage_perc', memoryPerc);
-        // CPU %
+
         const cpuLoad = nodeData.cpu || 0;
         const cpuPerc = parseFloat((cpuLoad * 100).toFixed(1));
         await this._updateCapability('measure_cpu_usage_perc', cpuPerc);
 
-        if (!this.getAvailable()) await this.setAvailable();
+        // --- Update Node Status Capability (FALSE = Online) ---
+        await this._updateCapability('alarm_node_status', false);
+
+        // Mark node as available if status update succeeds
+        if (!this.getAvailable()) {
+            await this.setAvailable();
+            this.log(`Node [${nodeName}] marked as available.`);
+        }
+
       } else {
+        // Handle case where API call succeeded but data format is unexpected
         this.warn(`No data received in node status response for [${nodeName}].`);
-        throw new Error(JSON.stringify({ en: 'Invalid status response from node.', nl: 'Ongeldig status antwoord van node.' }));
+        // Set status to offline (alarm on)
+        await this._updateCapability('alarm_node_status', true);
+        // Mark as unavailable because we couldn't parse data
+        await this.setUnavailable(JSON.stringify({ en: 'Invalid status response from node.', nl: 'Ongeldig status antwoord van node.' })).catch(this.error);
       }
     } catch (error) {
       this.error(`Failed to update node status for [${nodeName}]:`, error.message);
-      await this.setUnavailable(error.message).catch(this.error);
+      // --- Set Node Status Capability to TRUE (Offline/Alarm) on Error ---
+      await this._updateCapability('alarm_node_status', true);
+      // --- DO NOT set unavailable, let the alarm capability indicate the issue ---
+      // await this.setUnavailable(error.message).catch(this.error);
+      this.log(`Node [${nodeName}] status update failed, setting alarm status to true.`);
+      // Ensure device remains available so capabilities (like the alarm) are shown
+      if (!this.getAvailable()) {
+          this.warn(`Node [${nodeName}] was unavailable, marking available to show offline alarm status.`);
+          await this.setAvailable().catch(this.error);
+      }
     }
   }
 
   // Helper to update capability value on THIS node device instance
   async _updateCapability(capabilityId, value) {
      try {
+         // Force update for alarm status capability
+         const forceUpdate = (capabilityId === 'alarm_node_status');
          if (!this.hasCapability(capabilityId)) {
              this.log(`Adding capability '${capabilityId}' to node [${this.getName()}]`);
              await this.addCapability(capabilityId);
-             await this.setCapabilityValue(capabilityId, value);
-         } else if (this.getCapabilityValue(capabilityId) !== value) {
+             await this.setCapabilityValue(capabilityId, value); // Set initial value
+         } else if (forceUpdate || this.getCapabilityValue(capabilityId) !== value) {
               await this.setCapabilityValue(capabilityId, value);
               this.log(`Node Capability '${capabilityId}' updated to ${value} for [${this.getName()}]`);
          }
@@ -153,23 +188,22 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
       this.log(`Executing power action '${action}' for node [${nodeName}]`);
       try {
           const clusterDevice = await this._getClusterDevice();
-          // Use the specific API endpoint for node actions
+          // API path for node shutdown/stop
           const apiPath = `/api2/json/nodes/${nodeName}/status`;
           const options = {
               method: 'POST',
-              body: `command=${action}`,
-              timeout: (action === 'shutdown' ? 60000 : 15000)
+              body: `command=${action}`, // Send command in body
+              timeout: (action === 'shutdown' ? 60000 : 15000) // Longer timeout for shutdown
           };
-
           this.log(`Attempting ${options.method} to ${apiPath} via cluster [${clusterDevice.getName()}]`);
           // Use the cluster device's API call method (handles fallback)
           const result = await clusterDevice._executeApiCallWithFallback(apiPath, options);
           this.log(`${action} node command result for [${nodeName}]:`, result);
-          // No return needed, error is thrown on failure
-
+          // Optional: Trigger a status update shortly after action
+          this.homey.setTimeout(() => this.updateNodeStatus().catch(this.error), 2000);
       } catch (error) {
           this.error(`Failed to ${action} node [${nodeName}]:`, error.message);
-          // Re-throw user-friendly error
+          // Re-throw user-friendly error (inline translated)
           throw new Error(JSON.stringify({
               en: `Failed to ${action} node ${nodeName}`,
               nl: `Kon node ${nodeName} niet ${action === 'shutdown' ? 'uitschakelen' : 'stoppen'}`

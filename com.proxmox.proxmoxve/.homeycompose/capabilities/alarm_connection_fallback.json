@@ -15,6 +15,6 @@
       "en": "Connection restored to primary node",
       "nl": "Verbinding hersteld naar primaire node"
    },
-  "icon": "assets/virtual-machine.svg",
+  "icon": "assets/fallback.svg",
   "insights": true
 }

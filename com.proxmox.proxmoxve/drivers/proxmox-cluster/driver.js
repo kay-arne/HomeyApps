@@ -13,19 +13,153 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     this.log('ProxmoxClusterDriver initialized and Flow handlers registered.');
   }
 
-  // Pairing logic (remains the same)
-  async onPairListDevices() {
-    this.log('ProxmoxClusterDriver: onPairListDevices called');
-    const uniqueSessionId = crypto.randomUUID();
-    const deviceObjectForPairing = {
-      data: { id: `new-proxmox-cluster-${uniqueSessionId}` },
-      name: "New Proxmox Cluster", // Static name for pairing list
-      settings: { hostname: '', username: 'root@pam', api_token_id: '', api_token_secret: '' },
-      capabilities: [ 'measure_node_count', 'measure_vm_count', 'measure_lxc_count', 'alarm_connection_fallback', 'status_connected_host' ],
-      icon: "/cluster.svg",
-    };
-    this.log(`Presenting generic "Add New Cluster" option with temporary data ID: ${deviceObjectForPairing.data.id}`);
-    return [deviceObjectForPairing];
+
+  // Custom pairing logic according to SDK v3
+  async onPair(session) {
+    this.log('ProxmoxClusterDriver: onPair session started');
+    
+    // Initialize session data
+    this.clusterInfo = null;
+    
+    // Start with the first view
+    await session.showView('connection_setup');
+    
+    // Handle connection setup and testing - according to SDK documentation
+    session.setHandler('connection_setup', async function (data) {
+      
+      const { hostname, username, api_token_id, api_token_secret, allow_self_signed_certs } = data;
+      
+      // Validate input
+      if (!hostname || !username || !api_token_id || !api_token_secret) {
+        return {
+          success: false,
+          error: 'All fields are required'
+        };
+      }
+
+      // Test connection
+      try {
+        const testResult = await this.testProxmoxConnection({
+          hostname,
+          username,
+          api_token_id,
+          api_token_secret,
+          allow_self_signed_certs: allow_self_signed_certs || false
+        });
+
+        if (testResult.success) {
+          const nodeNames = testResult.clusterInfo.nodes.map(node => node.name).join(', ');
+          
+          // Store cluster info in session for later retrieval
+          this.clusterInfo = testResult.clusterInfo;
+
+          return {
+            success: true,
+            clusterInfo: testResult.clusterInfo,
+            message: `Connection successful! Found ${testResult.clusterInfo.nodes.length} nodes in cluster: ${nodeNames}`
+          };
+        } else {
+          return {
+            success: false,
+            error: testResult.error
+          };
+        }
+      } catch (error) {
+        this.error('Connection test exception:', error.message);
+        return {
+          success: false,
+          error: error.message || 'Connection test failed'
+        };
+      }
+    }.bind(this));
+
+    // Handle cluster info retrieval
+    session.setHandler('get_cluster_info', async function () {
+      return this.clusterInfo || null;
+    }.bind(this));
+
+  }
+
+
+  // Test Proxmox connection during pairing
+  async testProxmoxConnection(credentials) {
+    const fetch = require('node-fetch');
+    const https = require('https');
+    
+    try {
+      // Create HTTPS agent
+      const httpsAgent = new https.Agent({
+        rejectUnauthorized: !credentials.allow_self_signed_certs,
+        timeout: 10000
+      });
+
+      // Test basic connection
+      const url = `https://${credentials.hostname}:8006/api2/json/version`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `PVEAPIToken=${credentials.username}!${credentials.api_token_id}=${credentials.api_token_secret}`,
+          'Accept': 'application/json',
+          'User-Agent': 'Homey-ProxmoxVE/1.0'
+        },
+        agent: httpsAgent,
+        timeout: 10000
+      });
+
+      if (!response.ok) {
+        throw new Error(JSON.stringify({
+          en: `Connection failed: HTTP ${response.status}`,
+          nl: `Verbinding mislukt: HTTP ${response.status}`
+        }));
+      }
+
+      // Get cluster information
+      const clusterStatusUrl = `https://${credentials.hostname}:8006/api2/json/cluster/status`;
+      const clusterResponse = await fetch(clusterStatusUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `PVEAPIToken=${credentials.username}!${credentials.api_token_id}=${credentials.api_token_secret}`,
+          'Accept': 'application/json',
+          'User-Agent': 'Homey-ProxmoxVE/1.0'
+        },
+        agent: httpsAgent,
+        timeout: 10000
+      });
+
+      if (!clusterResponse.ok) {
+        throw new Error(JSON.stringify({
+          en: `Failed to get cluster information: HTTP ${clusterResponse.status}`,
+          nl: `Kon cluster informatie niet ophalen: HTTP ${clusterResponse.status}`
+        }));
+      }
+
+      const clusterData = await clusterResponse.json();
+      const nodes = clusterData.data?.filter(item => item.type === 'node') || [];
+
+
+        return {
+          success: true,
+          clusterInfo: {
+            nodes: nodes.map(node => ({
+              name: node.name,
+              ip: node.ip,
+              online: node.online === 1
+            })),
+            totalNodes: nodes.length,
+            onlineNodes: nodes.filter(node => node.online === 1).length
+          }
+        };
+
+    } catch (error) {
+      this.error('Connection test error:', error);
+      return {
+        success: false,
+        error: error.message || JSON.stringify({
+          en: 'Connection test failed',
+          nl: 'Verbindingstest mislukt'
+        })
+      };
+    }
   }
 
   // === FLOW CARD HANDLERS (Now on Driver level) ===
@@ -59,7 +193,10 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       registerCard('Action', 'shutdown_vm', this.onFlowActionShutdownVm, this.handleFlowArgumentAutocomplete);
       registerCard('Condition', 'vm_is_running', this.onFlowConditionIsRunning, this.handleFlowArgumentAutocomplete);
 
-    } catch (error) { this.error('CRITICAL ERROR during Flow registration:', error); }
+    } catch (error) { 
+      this.error('CRITICAL ERROR during Flow registration:', error); 
+      throw error; // Re-throw to prevent app from starting with broken flow cards
+    }
   }
 
   // Autocomplete handler - fetches VMs/LXCs from the relevant cluster device

@@ -6,6 +6,14 @@ const Homey = require('homey');
 // Represents an individual paired Proxmox Node device
 module.exports = class ProxmoxNodeDevice extends Homey.Device {
   updateIntervalId = null; // Stores the ID for the polling timer for this instance
+  activeTimeouts = new Set(); // Track active timeouts for cleanup
+  connectionHealth = {
+    lastSuccessfulCall: null,
+    consecutiveFailures: 0,
+    totalCalls: 0,
+    totalFailures: 0,
+    averageResponseTime: 0
+  };
 
   // === LIFECYCLE METHODS ===
 
@@ -36,7 +44,7 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
     const serverId = this.getData().serverId;
     this.log(`Node device added: ${nodeName} (Node ID: ${nodeId}, Cluster ID: ${serverId})`);
     // Perform an initial status update shortly after adding
-    this.homey.setTimeout(async () => {
+    this._createManagedTimeout(async () => {
          await this.updateNodeStatus().catch(this.error);
     }, 2000);
    }
@@ -52,7 +60,71 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
    }
 
    async onRenamed(name) { this.log(`Node device renamed: ${this.getName()} to ${name}`); }
-   async onDeleted() { this.log(`Node device deleted: ${this.getName()}`); this.stopPolling(); }
+   async onDeleted() { 
+     this.log(`Node device deleted: ${this.getName()}`); 
+     this.stopPolling(); 
+     this._clearAllTimeouts();
+   }
+
+  // === TIMEOUT MANAGEMENT HELPERS ===
+
+  _createManagedTimeout(callback, delay) {
+    const timeoutId = this.homey.setTimeout(async () => {
+      this.activeTimeouts.delete(timeoutId);
+      try {
+        await callback();
+      } catch (error) {
+        this.error('Error in managed timeout callback:', error);
+      }
+    }, delay);
+    
+    this.activeTimeouts.add(timeoutId);
+    return timeoutId;
+  }
+
+  _clearAllTimeouts() {
+    for (const timeoutId of this.activeTimeouts) {
+      this.homey.clearTimeout(timeoutId);
+    }
+    this.activeTimeouts.clear();
+    this.log('Cleared all active timeouts');
+  }
+
+  // === CONNECTION HEALTH MONITORING ===
+
+  _updateConnectionHealth(success, responseTime = 0) {
+    this.connectionHealth.totalCalls++;
+    
+    if (success) {
+      this.connectionHealth.lastSuccessfulCall = Date.now();
+      this.connectionHealth.consecutiveFailures = 0;
+      
+      // Update average response time
+      const totalTime = this.connectionHealth.averageResponseTime * (this.connectionHealth.totalCalls - this.connectionHealth.totalFailures - 1);
+      this.connectionHealth.averageResponseTime = (totalTime + responseTime) / (this.connectionHealth.totalCalls - this.connectionHealth.totalFailures);
+    } else {
+      this.connectionHealth.totalFailures++;
+      this.connectionHealth.consecutiveFailures++;
+    }
+  }
+
+  _getConnectionHealthStatus() {
+    const now = Date.now();
+    const timeSinceLastSuccess = this.connectionHealth.lastSuccessfulCall ? 
+      (now - this.connectionHealth.lastSuccessfulCall) : null;
+    
+    const failureRate = this.connectionHealth.totalCalls > 0 ? 
+      (this.connectionHealth.totalFailures / this.connectionHealth.totalCalls) * 100 : 0;
+    
+    return {
+      isHealthy: this.connectionHealth.consecutiveFailures < 3 && failureRate < 50,
+      timeSinceLastSuccess,
+      consecutiveFailures: this.connectionHealth.consecutiveFailures,
+      failureRate: Math.round(failureRate * 100) / 100,
+      averageResponseTime: Math.round(this.connectionHealth.averageResponseTime),
+      totalCalls: this.connectionHealth.totalCalls
+    };
+  }
 
   // === POLLING LOGIC ===
 
@@ -142,7 +214,7 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
 
       } else {
         // Handle case where API call succeeded but data format is unexpected
-        this.warn(`No data received in node status response for [${nodeName}].`);
+        this.log(`[WARN] No data received in node status response for [${nodeName}].`);
         // Set status to offline (alarm on)
         await this._updateCapability('alarm_node_status', true);
         // Mark as unavailable because we couldn't parse data
@@ -157,7 +229,7 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
       this.log(`Node [${nodeName}] status update failed, setting alarm status to true.`);
       // Ensure device remains available so capabilities (like the alarm) are shown
       if (!this.getAvailable()) {
-          this.warn(`Node [${nodeName}] was unavailable, marking available to show offline alarm status.`);
+          this.log(`[WARN] Node [${nodeName}] was unavailable, marking available to show offline alarm status.`);
           await this.setAvailable().catch(this.error);
       }
     }
@@ -200,7 +272,7 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
           const result = await clusterDevice._executeApiCallWithFallback(apiPath, options);
           this.log(`${action} node command result for [${nodeName}]:`, result);
           // Optional: Trigger a status update shortly after action
-          this.homey.setTimeout(() => this.updateNodeStatus().catch(this.error), 2000);
+          this._createManagedTimeout(() => this.updateNodeStatus().catch(this.error), 2000);
       } catch (error) {
           this.error(`Failed to ${action} node [${nodeName}]:`, error.message);
           // Re-throw user-friendly error (inline translated)

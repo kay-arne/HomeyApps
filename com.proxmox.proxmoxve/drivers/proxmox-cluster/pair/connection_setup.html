@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Proxmox Connection Setup</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #007AFF;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007AFF;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056CC;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .btn-primary:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007AFF;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Proxmox Connection Setup</h1>
+        
+        <form id="connectionForm">
+            <div class="form-group">
+                <label for="hostname">Hostname or IP Address</label>
+                <input type="text" id="hostname" name="hostname" placeholder="e.g., pve.example.com or 192.168.1.100" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="e.g., root@pam or homey@pve" value="root@pam" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="api_token_id">API Token ID</label>
+                <input type="text" id="api_token_id" name="api_token_id" placeholder="e.g., homey@pve!mytoken" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="api_token_secret">API Token Secret</label>
+                <input type="password" id="api_token_secret" name="api_token_secret" placeholder="Enter your API token secret" required>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="allow_self_signed_certs" name="allow_self_signed_certs">
+                    <label for="allow_self_signed_certs">Allow Self-Signed Certificates</label>
+                </div>
+                <div class="warning" id="sslWarning" style="display: none;">
+                    ⚠️ <strong>Security Warning:</strong> This disables SSL certificate validation and may expose your connection to security risks. Only use this if you have self-signed certificates and understand the risks.
+                </div>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Testing connection...</div>
+            </div>
+            
+            <div class="error" id="errorMessage"></div>
+            <div class="success" id="successMessage"></div>
+            
+            
+            <div class="button-group">
+                <button type="button" class="btn-secondary" onclick="goBack()">Back</button>
+                <button type="submit" class="btn-primary" id="testButton">Test Connection</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+
+        // Show SSL warning when checkbox is checked
+        document.getElementById('allow_self_signed_certs').addEventListener('change', function() {
+            const warning = document.getElementById('sslWarning');
+            warning.style.display = this.checked ? 'block' : 'none';
+        });
+
+        // Handle form submission
+        document.getElementById('connectionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Show loading state
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('testButton').disabled = true;
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            // Use Homey.emit according to SDK documentation
+            Homey.emit('connection_setup', data).then(function (result) {
+                // Handle different response formats
+                let parsedResult = result;
+                if (typeof result === 'string') {
+                    // Check if it's a success message (starts with "Connection successful")
+                    if (result.startsWith('Connection successful')) {
+                        parsedResult = { 
+                            success: true, 
+                            message: result,
+                            clusterInfo: window.lastClusterInfo || { nodes: [] }
+                        };
+                    } else {
+                        // Try to parse as JSON
+                        try {
+                            parsedResult = JSON.parse(result);
+                        } catch (e) {
+                            parsedResult = { success: false, error: result || 'Invalid response format' };
+                        }
+                    }
+                }
+                
+                if (parsedResult && parsedResult.success) {
+                    document.getElementById('successMessage').textContent = parsedResult.message || 'Connection successful!';
+                    document.getElementById('successMessage').style.display = 'block';
+                    
+                    // Store the connection data for the next step
+                    window.connectionData = data;
+                    window.clusterInfo = parsedResult.clusterInfo;
+                    
+                    
+                    // Proceed to next step after a short delay
+                    setTimeout(() => {
+                        Homey.showView('device_naming');
+                    }, 2000);
+                } else {
+                    document.getElementById('errorMessage').textContent = parsedResult?.error || 'Connection test failed';
+                    document.getElementById('errorMessage').style.display = 'block';
+                }
+            }).catch(function (error) {
+                document.getElementById('errorMessage').textContent = error.message || 'Connection test failed';
+                document.getElementById('errorMessage').style.display = 'block';
+            }).finally(function () {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('testButton').disabled = false;
+            });
+        });
+
+        function goBack() {
+            // No previous view, just close pairing
+            Homey.done();
+        }
+    </script>
+</body>
+</html>

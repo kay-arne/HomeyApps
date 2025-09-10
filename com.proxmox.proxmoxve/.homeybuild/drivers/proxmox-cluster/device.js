@@ -146,7 +146,8 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     const jitter = Math.random() * 30000; // 0-30 seconds jitter
     const initialDelay = jitter;
     
-    this.updateIntervalId = setInterval(async () => {
+    // Store the interval ID for proper cleanup
+    this.updateIntervalId = this.homey.setInterval(async () => {
       // Polling trigger calls the central update function
       await this.updateStatusAndConnection().catch(error => {
           this.error(`Error during scheduled poll check for [${this.getName()}]:`, error);
@@ -163,7 +164,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
   stopPolling() {
     if (this.updateIntervalId) {
-      clearInterval(this.updateIntervalId);
+      this.homey.clearInterval(this.updateIntervalId);
       this.updateIntervalId = null;
       this.log(`Stopped cluster status polling for [${this.getName()}]`);
     }
@@ -225,7 +226,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     const interval = this.hostManager.healthCheckInterval;
     this.log(`Starting proactive health monitoring every ${interval/1000} seconds`);
     
-    this.healthCheckIntervalId = setInterval(async () => {
+    this.healthCheckIntervalId = this.homey.setInterval(async () => {
       await this._performHealthCheck().catch(error => {
         this.error('Error during health check:', error);
       });
@@ -239,7 +240,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
   stopHealthMonitoring() {
     if (this.healthCheckIntervalId) {
-      clearInterval(this.healthCheckIntervalId);
+      this.homey.clearInterval(this.healthCheckIntervalId);
       this.healthCheckIntervalId = null;
       this.log('Stopped proactive health monitoring');
     }
@@ -929,15 +930,35 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   // Helper to update capability value on THIS device instance
   async _updateCapability(capabilityId, value) {
      try {
-         const forceUpdate = ['alarm_connection_fallback', 'status_connected_host'].includes(capabilityId);
          if (!this.hasCapability(capabilityId)) {
              this.log(`Adding capability '${capabilityId}' to [${this.getName()}]`);
              await this.addCapability(capabilityId);
+         }
+         
+         // Get current value to check if update is needed
+         const currentValue = this.getCapabilityValue(capabilityId);
+         
+         // Always update measure capabilities to ensure frontend gets the latest values
+         if (capabilityId.startsWith('measure_')) {
              await this.setCapabilityValue(capabilityId, value);
-             this.log(`Capability '${capabilityId}' initialized to ${value} for [${this.getName()}]`);
-         } else if (forceUpdate || this.getCapabilityValue(capabilityId) !== value) {
-              await this.setCapabilityValue(capabilityId, value);
-              this.log(`Capability '${capabilityId}' updated to ${value} for [${this.getName()}]` + (forceUpdate ? ' (forced)' : ''));
+             this.log(`Capability '${capabilityId}' updated to ${value} for [${this.getName()}] (measure capability)`);
+             
+             // Force a device refresh by triggering a capability change event
+             this.homey.emit('device:capability:changed', {
+               deviceId: this.getId(),
+               capabilityId: capabilityId,
+               value: value
+             });
+             
+             // Also try to trigger a device refresh
+             this.homey.emit('device:refresh', {
+               deviceId: this.getId()
+             });
+         } else if (currentValue !== value) {
+             await this.setCapabilityValue(capabilityId, value);
+             this.log(`Capability '${capabilityId}' updated from ${currentValue} to ${value} for [${this.getName()}]`);
+         } else {
+             this.log(`Capability '${capabilityId}' value unchanged (${value}), skipping update for [${this.getName()}]`);
          }
      } catch (error) { 
        this.error(`Error setting capability '${capabilityId}':`, error); 

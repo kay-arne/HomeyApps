@@ -7,6 +7,7 @@ const https = require('https');
 // Represents the paired Proxmox Cluster connection device
 module.exports = class ProxmoxClusterDevice extends Homey.Device {
   updateIntervalId = null; // Stores the ID for the polling timer for this instance
+  healthCheckIntervalId = null; // New: Proactive health monitoring
   requestCache = new Map(); // Cache for API responses
   pendingRequests = new Map(); // Deduplication for concurrent requests
   cacheTimeout = 5 * 60 * 1000; // 5 minutes cache TTL
@@ -19,13 +20,24 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     averageResponseTime: 0
   };
 
+  // New: Intelligent host management
+  hostManager = {
+    primaryHost: null,
+    availableHosts: new Map(), // host -> { lastSeen, responseTime, failureCount, status }
+    circuitBreakers: new Map(), // host -> { failures, lastFailure, state: 'closed'|'open'|'half-open' }
+    preferredHost: null, // Currently best performing host
+    lastHealthCheck: 0,
+    healthCheckInterval: 30000 // 30 seconds
+  };
+
   // === LIFECYCLE METHODS ===
 
   async onInit() {
-    this.log(`Initializing: ${this.getName()} (Homey ID: ${this.getData().id})`);
+    this.log(`Initializing Enhanced Cluster Device: ${this.getName()} (Homey ID: ${this.getData().id})`);
     try {
       // Clean up any existing cache
       this._cleanupCache();
+      this._initializeHostManager();
       
       // Test connection if credentials are provided
       const hostname = this.getSetting('hostname');
@@ -47,6 +59,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       
       await this.updateStatusAndConnection();
       this.startPolling(); // Start polling, it will manage connection state
+      this.startHealthMonitoring(); // New: Start proactive health monitoring
     } catch (error) {
       this.error(`Initialization Error for [${this.getName()}]:`, error);
       const errorMessage = error.message || 'Initialization failed';
@@ -107,8 +120,9 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
    async onRenamed(name) { this.log(`Device renamed: ${this.getName()} to ${name}`); }
    async onDeleted() { 
-     this.log(`Device deleted: ${this.getName()}`); 
+     this.log(`Enhanced device deleted: ${this.getName()}`); 
      this.stopPolling(); 
+     this.stopHealthMonitoring(); // New: Stop health monitoring
      // Clean up cache, pending requests, and timeouts
      this.requestCache.clear();
      this.pendingRequests.clear();
@@ -184,6 +198,312 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     }
     this.activeTimeouts.clear();
     this.log('Cleared all active timeouts');
+  }
+
+  // === ENHANCED HOST MANAGEMENT ===
+
+  _initializeHostManager() {
+    const primaryHost = this.getSetting('hostname');
+    this.hostManager.primaryHost = primaryHost;
+    this.hostManager.preferredHost = primaryHost;
+    
+    // Initialize primary host in available hosts
+    this.hostManager.availableHosts.set(primaryHost, {
+      lastSeen: Date.now(),
+      responseTime: 0,
+      failureCount: 0,
+      status: 'unknown'
+    });
+    
+    this.log(`Host manager initialized with primary: ${primaryHost}`);
+  }
+
+  // New: Proactive health monitoring of all cluster nodes
+  startHealthMonitoring() {
+    this.stopHealthMonitoring();
+    
+    const interval = this.hostManager.healthCheckInterval;
+    this.log(`Starting proactive health monitoring every ${interval/1000} seconds`);
+    
+    this.healthCheckIntervalId = setInterval(async () => {
+      await this._performHealthCheck().catch(error => {
+        this.error('Error during health check:', error);
+      });
+    }, interval);
+    
+    // Perform initial health check
+    this._createManagedTimeout(() => {
+      this._performHealthCheck().catch(this.error);
+    }, 5000);
+  }
+
+  stopHealthMonitoring() {
+    if (this.healthCheckIntervalId) {
+      clearInterval(this.healthCheckIntervalId);
+      this.healthCheckIntervalId = null;
+      this.log('Stopped proactive health monitoring');
+    }
+  }
+
+  // New: Comprehensive health check of all cluster nodes
+  async _performHealthCheck() {
+    const now = Date.now();
+    this.hostManager.lastHealthCheck = now;
+    
+    try {
+      // Get current cluster status
+      const clusterStatusData = await this._doApiCall(
+        this.hostManager.primaryHost, 
+        '/api2/json/cluster/status', 
+        { method: 'GET', timeout: 10000 }
+      );
+      
+      if (!Array.isArray(clusterStatusData?.data)) {
+        this.log('[WARN] Invalid cluster status response during health check');
+        return;
+      }
+
+      const onlineNodes = clusterStatusData.data.filter(item => 
+        item.type === 'node' && item.online === 1 && item.ip
+      );
+
+      // Test each online node
+      const healthCheckPromises = onlineNodes.map(async (node) => {
+        const nodeIp = node.ip;
+        const nodeName = node.name;
+        
+        try {
+          const startTime = Date.now();
+          await this._doApiCall(nodeIp, '/api2/json/version', { 
+            method: 'GET', 
+            timeout: 5000 
+          });
+          const responseTime = Date.now() - startTime;
+          
+          // Update host status
+          this.hostManager.availableHosts.set(nodeIp, {
+            lastSeen: now,
+            responseTime: responseTime,
+            failureCount: 0,
+            status: 'healthy',
+            nodeName: nodeName
+          });
+          
+          // Reset circuit breaker if it was open
+          if (this.hostManager.circuitBreakers.has(nodeIp)) {
+            const breaker = this.hostManager.circuitBreakers.get(nodeIp);
+            if (breaker.state === 'open' && (now - breaker.lastFailure) > 60000) { // 1 minute
+              breaker.state = 'half-open';
+              this.log(`Circuit breaker for ${nodeIp} moved to half-open`);
+            }
+          }
+          
+          this.log(`Health check OK: ${nodeName} (${nodeIp}) - ${responseTime}ms`);
+          
+        } catch (error) {
+          // Update failure count
+          const current = this.hostManager.availableHosts.get(nodeIp) || {
+            lastSeen: 0,
+            responseTime: 0,
+            failureCount: 0,
+            status: 'unknown'
+          };
+          
+          current.failureCount++;
+          current.status = 'unhealthy';
+          current.lastFailure = now;
+          
+          this.hostManager.availableHosts.set(nodeIp, current);
+          
+          // Update circuit breaker
+          this._updateCircuitBreaker(nodeIp, false);
+          
+          this.log(`Health check FAILED: ${nodeName} (${nodeIp}) - ${error.message}`);
+        }
+      });
+
+      await Promise.allSettled(healthCheckPromises);
+      
+      // Update preferred host based on performance
+      this._updatePreferredHost();
+      
+      // Clean up old/unreachable hosts
+      this._cleanupHostManager();
+      
+    } catch (error) {
+      this.error('Health check failed:', error.message);
+    }
+  }
+
+  // New: Circuit breaker pattern for failed hosts
+  _updateCircuitBreaker(host, success) {
+    if (!this.hostManager.circuitBreakers.has(host)) {
+      this.hostManager.circuitBreakers.set(host, {
+        failures: 0,
+        lastFailure: 0,
+        state: 'closed'
+      });
+    }
+    
+    const breaker = this.hostManager.circuitBreakers.get(host);
+    
+    if (success) {
+      breaker.failures = 0;
+      breaker.state = 'closed';
+    } else {
+      breaker.failures++;
+      breaker.lastFailure = Date.now();
+      
+      if (breaker.failures >= 3) {
+        breaker.state = 'open';
+        this.log(`Circuit breaker OPENED for ${host} (${breaker.failures} failures)`);
+      }
+    }
+  }
+
+  // New: Intelligent host selection based on performance
+  _updatePreferredHost() {
+    const now = Date.now();
+    let bestHost = null;
+    let bestScore = -1;
+    
+    for (const [host, info] of this.hostManager.availableHosts) {
+      // Skip if circuit breaker is open
+      const breaker = this.hostManager.circuitBreakers.get(host);
+      if (breaker && breaker.state === 'open') {
+        continue;
+      }
+      
+      // Skip if host is too old (not seen in last 2 minutes)
+      if ((now - info.lastSeen) > 120000) {
+        continue;
+      }
+      
+      // Calculate score based on response time and failure count
+      let score = 1000; // Base score
+      
+      // Penalize by response time (lower is better)
+      score -= info.responseTime;
+      
+      // Penalize by failure count
+      score -= (info.failureCount * 100);
+      
+      // Bonus for primary host
+      if (host === this.hostManager.primaryHost) {
+        score += 50;
+      }
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestHost = host;
+      }
+    }
+    
+    if (bestHost && bestHost !== this.hostManager.preferredHost) {
+      this.log(`Preferred host changed: ${this.hostManager.preferredHost} → ${bestHost} (score: ${bestScore})`);
+      this.hostManager.preferredHost = bestHost;
+    }
+  }
+
+  // New: Clean up old/unreachable hosts
+  _cleanupHostManager() {
+    const now = Date.now();
+    const maxAge = 300000; // 5 minutes
+    
+    for (const [host, info] of this.hostManager.availableHosts) {
+      if ((now - info.lastSeen) > maxAge) {
+        this.hostManager.availableHosts.delete(host);
+        this.hostManager.circuitBreakers.delete(host);
+        this.log(`Cleaned up old host: ${host}`);
+      }
+    }
+  }
+
+  // New: Get ordered list of hosts to try (best performance first)
+  _getOrderedHostList() {
+    const now = Date.now();
+    const hosts = [];
+    
+    // Add preferred host first if available
+    if (this.hostManager.preferredHost) {
+      const preferredInfo = this.hostManager.availableHosts.get(this.hostManager.preferredHost);
+      const breaker = this.hostManager.circuitBreakers.get(this.hostManager.preferredHost);
+      
+      if (preferredInfo && 
+          preferredInfo.status === 'healthy' && 
+          (!breaker || breaker.state !== 'open') &&
+          (now - preferredInfo.lastSeen) < 120000) {
+        hosts.push(this.hostManager.preferredHost);
+      }
+    }
+    
+    // Add other healthy hosts, sorted by performance
+    const otherHosts = [];
+    for (const [host, info] of this.hostManager.availableHosts) {
+      if (host === this.hostManager.preferredHost) continue;
+      
+      const breaker = this.hostManager.circuitBreakers.get(host);
+      if (info.status === 'healthy' && 
+          (!breaker || breaker.state !== 'open') &&
+          (now - info.lastSeen) < 120000) {
+        otherHosts.push({ host, info });
+      }
+    }
+    
+    // Sort by response time (fastest first)
+    otherHosts.sort((a, b) => a.info.responseTime - b.info.responseTime);
+    hosts.push(...otherHosts.map(h => h.host));
+    
+    this.log(`Ordered host list: ${hosts.join(' → ')}`);
+    return hosts;
+  }
+
+  // New: Update host success metrics
+  _updateHostSuccess(host) {
+    const now = Date.now();
+    const current = this.hostManager.availableHosts.get(host) || {
+      lastSeen: 0,
+      responseTime: 0,
+      failureCount: 0,
+      status: 'unknown'
+    };
+    
+    current.lastSeen = now;
+    current.status = 'healthy';
+    current.failureCount = Math.max(0, current.failureCount - 1); // Gradually reduce failure count
+    
+    this.hostManager.availableHosts.set(host, current);
+    this._updateCircuitBreaker(host, true);
+  }
+
+  // New: Update host failure metrics
+  _updateHostFailure(host, error) {
+    const now = Date.now();
+    const current = this.hostManager.availableHosts.get(host) || {
+      lastSeen: 0,
+      responseTime: 0,
+      failureCount: 0,
+      status: 'unknown'
+    };
+    
+    current.failureCount++;
+    current.status = 'unhealthy';
+    current.lastFailure = now;
+    
+    this.hostManager.availableHosts.set(host, current);
+    this._updateCircuitBreaker(host, false);
+  }
+
+  // New: Update connection capabilities
+  async _updateConnectionCapabilities(currentHost, isFallback) {
+    const isUsingFallback = isFallback || (currentHost !== this.hostManager.primaryHost);
+    
+    await this._updateCapability('alarm_connection_fallback', isUsingFallback);
+    await this._updateCapability('status_connected_host', currentHost);
+    
+    if (!this.getAvailable()) {
+      await this.setAvailable();
+    }
   }
 
   // === LOGGING HELPERS ===
@@ -500,7 +820,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     }
   }
 
-  // Executes an API call, trying primary host first, then fallbacks if necessary
+  // New: Enhanced API call with intelligent fallback
   async _executeApiCallWithFallback(urlPath, options = {}) {
       // Check cache first for GET requests
       if ((options.method || 'GET') === 'GET') {
@@ -519,7 +839,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       }
 
       // Create promise for this request
-      const requestPromise = this._executeApiCallWithFallbackInternal(urlPath, options);
+      const requestPromise = this._executeApiCallWithIntelligentFallbackInternal(urlPath, options);
       this.pendingRequests.set(requestKey, requestPromise);
 
       try {
@@ -537,80 +857,73 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       }
   }
 
-  // Internal method that does the actual API call work
-  async _executeApiCallWithFallbackInternal(urlPath, options = {}) {
-      let credentials;
-      try { credentials = this._getApiCredentials(); }
-      catch (error) { await this.setUnavailable({ en: error.message, nl: error.message }); throw error; }
+  // New: Intelligent fallback with performance-based host selection
+  async _executeApiCallWithIntelligentFallbackInternal(urlPath, options = {}) {
+    let credentials;
+    try { 
+      credentials = this._getApiCredentials(); 
+    } catch (error) { 
+      await this.setUnavailable({ en: error.message, nl: error.message }); 
+      throw error; 
+    }
 
-      const primaryHost = credentials.hostname;
-      let lastError = null;
+    // Get ordered list of hosts to try (preferred first, then by performance)
+    const hostsToTry = this._getOrderedHostList();
+    
+    if (hostsToTry.length === 0) {
+      throw new Error(JSON.stringify({
+        en: 'No available hosts found',
+        nl: 'Geen beschikbare hosts gevonden'
+      }));
+    }
 
-      // 1. Try Primary Host
-      this.log(`Attempting API call via PRIMARY host: ${primaryHost}`);
+    let lastError = null;
+    
+    for (const host of hostsToTry) {
+      this.log(`Attempting API call via host: ${host}`);
+      
       try {
-          const result = await this._doApiCall(primaryHost, urlPath, options);
-          // Success on primary
-          await this._updateCapability('alarm_connection_fallback', false);
-          await this._updateCapability('status_connected_host', primaryHost);
-          if (!this.getAvailable()) await this.setAvailable();
-          return result; // Return successful result
+        const result = await this._doApiCall(host, urlPath, options);
+        
+        // Success! Update host status and capabilities
+        this._updateHostSuccess(host);
+        await this._updateConnectionCapabilities(host, false);
+        
+        return result;
+        
       } catch (error) {
-          this.error(`Primary host attempt failed for ${urlPath}: ${error.message}`);
-          lastError = error;
-          const isNetworkError = error.code || error.type === 'request-timeout' || !(error.message.startsWith('API Error:'));
-          if (!isNetworkError) {
-              // If it's an API error (like 401), don't try fallbacks. Mark unavailable.
-              this.log('API error on primary host, not attempting fallbacks.');
-              await this.setUnavailable({ en: `API error on primary host: ${error.message}`, nl: `API fout op primaire host: ${error.message}` }).catch(this.error);
-              await this._updateCapability('alarm_connection_fallback', false);
-              await this._updateCapability('status_connected_host', primaryHost);
-              throw error; // Re-throw API error
-          }
-          this.log('Primary host failed with network error, attempting fallbacks...');
+        this.error(`API call failed via ${host}: ${error.message}`);
+        lastError = error;
+        
+        // Update host failure
+        this._updateHostFailure(host, error);
+        
+        // Check if we should continue trying other hosts
+        const isNetworkError = error.code || error.type === 'request-timeout' || !(error.message.startsWith('API Error:'));
+        
+        if (!isNetworkError) {
+          // API error (like 401) - don't try other hosts
+          this.log('API error detected, not attempting other hosts');
+          await this._updateConnectionCapabilities(host, true);
+          throw error;
+        }
+        
+        // Network error - continue to next host
+        this.log(`Network error on ${host}, trying next host...`);
       }
+    }
 
-      // 2. Try Fallback IPs
-      const onlineNodeIps = await this.getStoreValue('online_node_ips') || [];
-      const fallbacksToTry = onlineNodeIps.filter(ip => ip !== primaryHost); // Exclude primary
-
-      if (fallbacksToTry.length === 0) {
-          this.log('No fallback IPs available.');
-          const finalErrorMsg = { en: `Primary connection failed and no fallbacks available. Last error: ${lastError?.message}`, nl: `Primaire verbinding mislukt en geen fallbacks beschikbaar. Laatste fout: ${lastError?.message}` };
-          await this.setUnavailable(finalErrorMsg).catch(this.error);
-          await this._updateCapability('alarm_connection_fallback', false);
-          await this._updateCapability('status_connected_host', primaryHost);
-          throw lastError || new Error(JSON.stringify(finalErrorMsg));
-      }
-
-      for (const fallbackIp of fallbacksToTry) {
-          this.log(`Attempting API call via FALLBACK IP: ${fallbackIp}`);
-          try {
-              const result = await this._doApiCall(fallbackIp, urlPath, options);
-              // Success on fallback
-              await this._updateCapability('alarm_connection_fallback', true);
-              await this._updateCapability('status_connected_host', fallbackIp);
-              if (!this.getAvailable()) await this.setAvailable();
-              return result; // Return successful result from fallback
-          } catch (error) {
-              this.error(`Fallback attempt via ${fallbackIp} failed: ${error.message}`);
-              lastError = error;
-              const isNetworkError = error.code || error.type === 'request-timeout' || !(error.message.startsWith('API Error:'));
-              if (!isNetworkError) {
-                  this.log('API error on fallback host, stopping fallback attempts.');
-                  break; // Stop trying fallbacks on API error
-              }
-              // Continue to next fallback IP if network error
-          }
-      }
-
-      // If loop finishes without success
-      this.log(`All fallback attempts failed. Last error: ${lastError?.message}`);
-      const finalErrorMsgAll = { en: `All connection attempts failed. Last error: ${lastError?.message}`, nl: `Alle verbindingspogingen mislukt. Laatste fout: ${lastError?.message}` };
-      await this.setUnavailable(finalErrorMsgAll).catch(this.error);
-      await this._updateCapability('alarm_connection_fallback', false); // Reset fallback status
-      await this._updateCapability('status_connected_host', primaryHost); // Show primary host
-      throw lastError || new Error(JSON.stringify(finalErrorMsgAll));
+    // All hosts failed
+    this.log('All hosts failed, marking device unavailable');
+    await this.setUnavailable({
+      en: `All connection attempts failed. Last error: ${lastError?.message}`,
+      nl: `Alle verbindingspogingen mislukt. Laatste fout: ${lastError?.message}`
+    }).catch(this.error);
+    
+    throw lastError || new Error(JSON.stringify({
+      en: 'All connection attempts failed',
+      nl: 'Alle verbindingspogingen mislukt'
+    }));
   }
 
   // Helper to update capability value on THIS device instance
@@ -855,6 +1168,17 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       // Re-throw user-friendly error
       throw new Error(JSON.stringify({ en: `Failed to check status for ${targetDesc}`, nl: `Kon status niet controleren voor ${targetDesc}` }));
     }
+  }
+
+  // Get current host status for debugging
+  getHostStatus() {
+    return {
+      primaryHost: this.hostManager.primaryHost,
+      preferredHost: this.hostManager.preferredHost,
+      availableHosts: Array.from(this.hostManager.availableHosts.entries()),
+      circuitBreakers: Array.from(this.hostManager.circuitBreakers.entries()),
+      lastHealthCheck: this.hostManager.lastHealthCheck
+    };
   }
 
 } // End of class ProxmoxClusterDevice

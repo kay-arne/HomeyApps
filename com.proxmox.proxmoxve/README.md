@@ -170,7 +170,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/kay-arne/HomeyApps/issues)
 - **Homey Community**: [Homey Community Forum](https://community.homey.app/)
-- **Email**: kay-arne@kay-arne.eu
+- **GitHub**: [kay-arne](https://github.com/kay-arne)
 
 ## 🔗 Links
 

@@ -1,6 +1,6 @@
 {
   "id": "com.proxmox.proxmoxve",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "brandColor": "#D76300",

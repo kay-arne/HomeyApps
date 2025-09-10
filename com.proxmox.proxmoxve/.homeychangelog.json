@@ -10,5 +10,8 @@
   },
   "0.8.3": {
     "en": "Changed node offline behavior, app icons and images."
+  },
+  "0.8.4": {
+    "en": "Changed pairing procedure"
   }
 }

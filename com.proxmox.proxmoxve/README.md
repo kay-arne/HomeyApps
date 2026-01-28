@@ -14,10 +14,15 @@ A comprehensive Homey app that integrates your Proxmox VE server with your smart
 - **VM/Container Counts**: Real-time statistics of running VMs and LXC containers
 - **Connection Health**: Automatic connection monitoring with fallback alerts
 
+### 🛡️ **Reliability**
+- **Robust Failover**: Automatic switching to backup nodes if primary is down
+- **Auto-Discovery**: Automatically learns new backup IPs
+- **Connection Health**: Advanced connection monitoring with suppression of transient errors
+
 ### 🎮 **Control**
 - **VM Management**: Start, stop, and shutdown virtual machines
 - **Flow Cards**: Create automations based on VM status
-- **Real-time Updates**: Live polling of server statistics
+- **Real-time Updates**: Live polling of server statistics (now with forced refresh)
 
 ### 🔧 **Advanced Features**
 - **Custom Pairing**: Guided setup process with connection testing
@@ -26,7 +31,6 @@ A comprehensive Homey app that integrates your Proxmox VE server with your smart
 - **Multi-node Support**: Automatic discovery and management of cluster nodes
 
 ## 📋 Requirements
-
 - **Proxmox VE** server (version 6.0 or higher)
 - **API Token** with appropriate permissions
 - **Network connectivity** between Homey and Proxmox server
@@ -69,18 +73,17 @@ A comprehensive Homey app that integrates your Proxmox VE server with your smart
    - Name your device
 
 ### 3. Configure Settings
-- **Polling Interval**: Set update frequency (30 seconds to 10 minutes)
+- **Polling Interval**: Set update frequency per device
+- **Backup IPs**: (Advanced) Auto-populated list of failover IPs
 - **SSL Validation**: Enable/disable based on your setup
-- **Debug Logging**: Enable for troubleshooting
 
 ## 🎯 Usage
 
 ### Device Capabilities
 - **measure_node_count**: Number of nodes in cluster
-- **measure_vm_count**: Number of running VMs
-- **measure_lxc_count**: Number of running containers
-- **alarm_connection_fallback**: Connection status alarm
-- **status_connected_host**: Currently connected host
+- **Total Active VMs/LXCs**: Aggregated cluster statistics
+- **alarm_connection_fallback**: Connection status alarm (Active when using backup host)
+- **status_connected_host**: Currently connected host IP
 
 ### Flow Cards
 
@@ -96,6 +99,7 @@ A comprehensive Homey app that integrates your Proxmox VE server with your smart
 Individual nodes are automatically discovered and added as separate devices with:
 - **measure_cpu_usage_perc**: CPU usage percentage
 - **measure_memory_usage_perc**: Memory usage percentage
+- **Active VM/LXC Count**: Local running instance counts
 - **alarm_node_status**: Node online/offline status
 
 ## 🔧 Configuration
@@ -111,9 +115,6 @@ If your Proxmox server uses self-signed certificates:
 - **Disabled**: Set to 0 to disable automatic polling
 
 ## 🐛 Troubleshooting
-
-### Known Issues
-- **Frontend Updates**: In some cases, the Homey frontend may not immediately reflect capability value changes (e.g., VM/LXC counts). The backend polling works correctly, but the UI may show cached values. This is a known limitation that we're working to resolve.
 
 ### Connection Issues
 1. **Check network connectivity** between Homey and Proxmox server

@@ -2,6 +2,7 @@
 
 const fetch = require('node-fetch');
 const https = require('https');
+const Homey = require('homey');
 
 class ProxmoxClient {
 
@@ -12,11 +13,11 @@ class ProxmoxClient {
   }
 
   _validateCredentials(credentials) {
-    if (!credentials) throw new Error('Credentials are required');
-    if (!credentials.hostname) throw new Error('Hostname is required');
-    if (!credentials.username) throw new Error('Username is required');
-    if (!credentials.tokenId) throw new Error('Token ID is required');
-    if (!credentials.tokenSecret) throw new Error('Token Secret is required');
+    if (!credentials) throw new Error(Homey.__('error.device_context_missing') + ' (Credentials missing)');
+    if (!credentials.hostname) throw new Error(Homey.__('error.device_context_missing') + ' (Hostname missing)');
+    if (!credentials.username) throw new Error(Homey.__('error.device_context_missing') + ' (Username missing)');
+    if (!credentials.tokenId) throw new Error(Homey.__('error.device_context_missing') + ' (TokenID missing)');
+    if (!credentials.tokenSecret) throw new Error(Homey.__('error.device_context_missing') + ' (TokenSecret missing)');
   }
 
   updateCredentials(newCredentials) {
@@ -36,7 +37,7 @@ class ProxmoxClient {
     // Respect allow_self_signed_certs option
     // If undefined, default to false (secure by default)
     const rejectUnauthorized = !this._credentials.allow_self_signed_certs;
-    
+
     return new https.Agent({
       rejectUnauthorized,
       timeout: this._options.timeout || 15000,
@@ -49,7 +50,7 @@ class ProxmoxClient {
     // Determine host to use: override provided in options, or default from credentials
     const targetHost = host || this._credentials.hostname;
     const url = `https://${targetHost}:8006${path}`;
-    
+
     const method = options.method || 'GET';
     const timeout = options.timeout || this._options.timeout || 15000;
 
@@ -73,11 +74,11 @@ class ProxmoxClient {
         // For Proxmox, usually query string format or www-form-urlencoded
         // Simplest generic approach if not manually formatted:
         // (Existing code used manual body string construction, checking that)
-         fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-         fetchOptions.body = options.body; // Expecting string or URLSearchParams
+        fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        fetchOptions.body = options.body; // Expecting string or URLSearchParams
       } else {
-         fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-         fetchOptions.body = options.body;
+        fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        fetchOptions.body = options.body;
       }
     }
 
@@ -85,14 +86,14 @@ class ProxmoxClient {
       const response = await fetch(url, fetchOptions);
 
       if (!response.ok) {
-         let errorBody = `(Status: ${response.status} ${response.statusText})`;
-         try { errorBody = await response.text(); } catch (e) {}
-         
-         // Custom error object to distinguish API errors
-         const error = new Error(`API Error ${response.status}: ${errorBody.substring(0, 200)}`);
-         error.statusCode = response.status;
-         error.responseBody = errorBody;
-         throw error;
+        let errorBody = `(Status: ${response.status} ${response.statusText})`;
+        try { errorBody = await response.text(); } catch (e) { }
+
+        // Custom error object to distinguish API errors
+        const error = new Error(`API Error ${response.status}: ${errorBody.substring(0, 200)}`);
+        error.statusCode = response.status;
+        error.responseBody = errorBody;
+        throw error;
       }
 
       const text = await response.text();
@@ -103,11 +104,11 @@ class ProxmoxClient {
       }
 
     } catch (error) {
-       // Enrich error for upper layers
-       if (error.type === 'request-timeout') {
-           error.code = 'ETIMEDOUT';
-       }
-       throw error;
+      // Enrich error for upper layers
+      if (error.type === 'request-timeout') {
+        error.code = 'ETIMEDOUT';
+      }
+      throw error;
     }
   }
 }

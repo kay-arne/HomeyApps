@@ -3,10 +3,11 @@ Proxmox VE Integration for Homey
 This app integrates your Proxmox VE server with Homey, allowing you to monitor and control your virtual machines and containers directly from your smart home.
 
 Features:
-- Monitor cluster and node status
-- View VM and container counts
+- Monitor cluster and node status (CPU/RAM)
+- View Active VM and container counts (per node and cluster total)
 - Control VMs (start, stop, shutdown)
-- Real-time CPU and memory monitoring
+- Flow cards for VM status automation
+- Robust Cluster Failover (automatic backup host switching)
 - Connection health monitoring
 - Custom guided pairing process
 

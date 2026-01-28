@@ -9,18 +9,18 @@
       "titleFormatted": {
         "en": "Start [[target_vm]]",
         "nl": "Start [[target_vm]]"
-       },
+      },
       "args": [
         {
           "name": "target_vm",
           "type": "autocomplete",
           "title": {
-             "en": "VM/Container",
-             "nl": "VM/Container"
+            "en": "VM/Container",
+            "nl": "VM/Container"
           },
           "placeholder": {
-             "en": "Type to search for VM/Container...",
-             "nl": "Typ om VM/Container te zoeken..."
+            "en": "Type to search for VM/Container...",
+            "nl": "Typ om VM/Container te zoeken..."
           }
         }
       ]
@@ -34,13 +34,19 @@
       "titleFormatted": {
         "en": "Stop [[target_vm]] (Force)",
         "nl": "Stop [[target_vm]] (Forceer)"
-       },
+      },
       "args": [
         {
           "name": "target_vm",
           "type": "autocomplete",
-          "title": { "en": "VM/Container", "nl": "VM/Container" },
-          "placeholder": { "en": "Type to search...", "nl": "Typ om te zoeken..." }
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
         }
       ]
     },
@@ -53,13 +59,19 @@
       "titleFormatted": {
         "en": "Shutdown [[target_vm]] (Graceful)",
         "nl": "Schakel [[target_vm]] uit (Graceful)"
-       },
+      },
       "args": [
         {
           "name": "target_vm",
           "type": "autocomplete",
-          "title": { "en": "VM/Container", "nl": "VM/Container" },
-          "placeholder": { "en": "Type to search...", "nl": "Typ om te zoeken..." }
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
         }
       ]
     }
@@ -76,12 +88,18 @@
         "nl": "[[target_vm]] draait"
       },
       "args": [
-         {
-           "name": "target_vm",
-           "type": "autocomplete",
-           "title": { "en": "VM/Container", "nl": "VM/Container" },
-           "placeholder": { "en": "Type to search...", "nl": "Typ om te zoeken..." }
-         }
+        {
+          "name": "target_vm",
+          "type": "autocomplete",
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
+        }
       ]
     }
   ]

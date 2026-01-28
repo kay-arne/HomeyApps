@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Proxmox Connection Setup</title>
+    <title data-i18n="pair.setup.title">Proxmox Connection Setup</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -139,33 +139,33 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔧 Proxmox Connection Setup</h1>
+        <h1 data-i18n="pair.setup.title">🔧 Proxmox Connection Setup</h1>
         
         <form id="connectionForm">
             <div class="form-group">
-                <label for="hostname">Hostname or IP Address</label>
-                <input type="text" id="hostname" name="hostname" placeholder="e.g., pve.example.com or 192.168.1.100" required>
+                <label for="hostname" data-i18n="pair.setup.hostname_label">Hostname or IP Address</label>
+                <input type="text" id="hostname" name="hostname" data-i18n-placeholder="pair.setup.hostname_placeholder" placeholder="e.g., pve.example.com or 192.168.1.100" required>
             </div>
             
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" placeholder="e.g., root@pam or homey@pve" value="root@pam" required>
+                <label for="username" data-i18n="pair.setup.username_label">Username</label>
+                <input type="text" id="username" name="username" data-i18n-placeholder="pair.setup.username_placeholder" placeholder="e.g., root@pam or homey@pve" value="root@pam" required>
             </div>
             
             <div class="form-group">
-                <label for="api_token_id">API Token ID</label>
-                <input type="text" id="api_token_id" name="api_token_id" placeholder="e.g., homey@pve!mytoken" required>
+                <label for="api_token_id" data-i18n="pair.setup.api_token_id_label">API Token ID</label>
+                <input type="text" id="api_token_id" name="api_token_id" data-i18n-placeholder="pair.setup.api_token_id_placeholder" placeholder="e.g., homey@pve!mytoken" required>
             </div>
             
             <div class="form-group">
-                <label for="api_token_secret">API Token Secret</label>
-                <input type="password" id="api_token_secret" name="api_token_secret" placeholder="Enter your API token secret" required>
+                <label for="api_token_secret" data-i18n="pair.setup.api_token_secret_label">API Token Secret</label>
+                <input type="password" id="api_token_secret" name="api_token_secret" data-i18n-placeholder="pair.setup.api_token_secret_placeholder" placeholder="Enter your API token secret" required>
             </div>
             
             <div class="form-group">
                 <div class="checkbox-group">
                     <input type="checkbox" id="allow_self_signed_certs" name="allow_self_signed_certs">
-                    <label for="allow_self_signed_certs">Allow Self-Signed Certificates</label>
+                    <label for="allow_self_signed_certs" data-i18n="pair.setup.allow_self_signed_certs">Allow Self-Signed Certificates</label>
                 </div>
                 <div class="warning" id="sslWarning" style="display: none;">
                     ⚠️ <strong>Security Warning:</strong> This disables SSL certificate validation and may expose your connection to security risks. Only use this if you have self-signed certificates and understand the risks.
@@ -174,7 +174,7 @@
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <div>Testing connection...</div>
+                <div data-i18n="pair.setup.testing_connection">Testing connection...</div>
             </div>
             
             <div class="error" id="errorMessage"></div>
@@ -182,19 +182,20 @@
             
             
             <div class="button-group">
-                <button type="button" class="btn-secondary" onclick="goBack()">Back</button>
-                <button type="submit" class="btn-primary" id="testButton">Test Connection</button>
+                <button type="button" class="btn-secondary" onclick="goBack()" data-i18n="pair.setup.back_btn">Back</button>
+                <button type="submit" class="btn-primary" id="testButton" data-i18n="pair.setup.test_connection_btn">Test Connection</button>
             </div>
         </form>
     </div>
 
     <script>
 
-        // Show SSL warning when checkbox is checked
-        document.getElementById('allow_self_signed_certs').addEventListener('change', function() {
-            const warning = document.getElementById('sslWarning');
-            warning.style.display = this.checked ? 'block' : 'none';
-        });
+            // Show SSL warning when checkbox is checked
+            document.getElementById('allow_self_signed_certs').addEventListener('change', function() {
+                const warning = document.getElementById('sslWarning');
+                warning.innerHTML = Homey.__('pair.setup.ssl_warning');
+                warning.style.display = this.checked ? 'block' : 'none';
+            });
 
         // Handle form submission
         document.getElementById('connectionForm').addEventListener('submit', async function(e) {
@@ -232,7 +233,7 @@
                 }
                 
                 if (parsedResult && parsedResult.success) {
-                    document.getElementById('successMessage').textContent = parsedResult.message || 'Connection successful!';
+                    document.getElementById('successMessage').textContent = parsedResult.message || Homey.__('pair.setup.connection_successful');
                     document.getElementById('successMessage').style.display = 'block';
                     
                     // Store the connection data for the next step
@@ -245,11 +246,11 @@
                         Homey.showView('device_naming');
                     }, 2000);
                 } else {
-                    document.getElementById('errorMessage').textContent = parsedResult?.error || 'Connection test failed';
+                    document.getElementById('errorMessage').textContent = parsedResult?.error || Homey.__('pair.setup.connection_failed');
                     document.getElementById('errorMessage').style.display = 'block';
                 }
             }).catch(function (error) {
-                document.getElementById('errorMessage').textContent = error.message || 'Connection test failed';
+                document.getElementById('errorMessage').textContent = error.message || Homey.__('pair.setup.connection_failed');
                 document.getElementById('errorMessage').style.display = 'block';
             }).finally(function () {
                 document.getElementById('loading').style.display = 'none';

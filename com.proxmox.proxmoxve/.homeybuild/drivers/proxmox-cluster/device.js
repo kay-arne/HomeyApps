@@ -10,7 +10,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   // === LIFECYCLE METHODS ===
 
   async onInit() {
-    this.log(`Initializing Cluster Device: ${this.getName()}`);
+    this.log(this.homey.__('driver.initializing', { s: this.getName() }));
 
     this.requestCache = new Map();
     this.pendingRequests = new Map();
@@ -26,17 +26,17 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
       // Test connection
       if (this.hasSettings()) {
-        this.log('Testing connection...');
+        this.log(this.homey.__('driver.testing_connection'));
         const connectionTest = await this.testApiConnection();
-        this.log(`Connection test result: ${connectionTest}`);
+        this.log(this.homey.__('driver.connection_test_result', { s: connectionTest }));
       }
 
       await this.updateStatusAndConnection();
       this.startPolling();
       this.startHealthMonitoring();
     } catch (error) {
-      this.error(`Initialization Error:`, error);
-      await this.setUnavailable(error.message || 'Initialization failed').catch(this.error);
+      this.error(this.homey.__('driver.initialization_error'), error);
+      await this.setUnavailable(error.message || this.homey.__('error.initialization_failed')).catch(this.error);
     }
   }
 
@@ -62,7 +62,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   }
 
   async onSettings({ newSettings, changedKeys }) {
-    this.log(`Settings updated.`);
+    this.log(this.homey.__('driver.settings_updated'));
     try {
       // Update Client Credentials
       this.proxmoxClient.updateCredentials(this._getCredentialsFromSettings(newSettings));
@@ -70,7 +70,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       let connectionOK = false;
 
       if (changedKeys.includes('hostname')) {
-        this.log('Primary hostname changed.');
+        this.log(this.homey.__('driver.primary_hostname_changed'));
         // Reset Host Manager Primary
         this.hostManager.setPrimaryHost(newSettings.hostname);
 
@@ -91,10 +91,10 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     }
   }
 
-  async onRenamed(name) { this.log(`Renamed to ${name}`); }
+  async onRenamed(name) { this.log(this.homey.__('driver.renamed', { s: name })); }
 
   async onDeleted() {
-    this.log(`Deleted: ${this.getName()}`);
+    this.log(this.homey.__('driver.deleted', { s: this.getName() }));
     this.stopPolling();
     this.stopHealthMonitoring();
     this._clearAllTimeouts();
@@ -186,8 +186,8 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       const sortedNew = [...newBackupHosts].sort().join(',');
 
       if (sortedCurrent !== sortedNew) {
-        this.log('Updating Backup Hosts settings to:', sortedNew);
-        await this.setSettings({ backup_hosts: sortedNew }).catch(e => this.error('Failed to update backup_hosts', e));
+        this.log(this.homey.__('driver.updating_backup_hosts', { s: sortedNew }));
+        await this.setSettings({ backup_hosts: sortedNew }).catch(e => this.error(this.homey.__('driver.failed_update_backup_hosts'), e));
         // Note: HostManager will pick this up on restart, or we can feed it live if we wanted to be fancy,
         // but health check already discovers "otherNodes" below anyway.
       }
@@ -224,7 +224,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
     } catch (error) {
       // If we can't even get cluster status, everything might be down
-      this.log('Health Check: Failed to get cluster status.');
+      this.log(this.homey.__('driver.health_check_failed'));
     }
   }
 
@@ -262,7 +262,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
           return result;
         } catch (error) {
-          this.error(`API Fail via ${host}: ${error.message}`);
+          this.error(this.homey.__('driver.api_fail_via', { s: host, s2: error.message }));
           this.hostManager.updateHostStatus(host, false);
           lastError = error;
 
@@ -277,9 +277,9 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       // If we are already in fallback mode, avoid flapping the UI with "Unavailable"
       // unless it's a critical logic error. Stale data is better than a flashing error.
       if (!this.getCapabilityValue('alarm_connection_fallback')) {
-        await this.setUnavailable(`Connection failed. Last: ${lastError?.message}`).catch(this.error);
+        await this.setUnavailable(this.homey.__('driver.connection_failed_fallback', { s: lastError?.message })).catch(this.error);
       } else {
-        this.error(`Connection failed (Fallback active). Keeping device available. Last mismatch: ${lastError?.message}`);
+        this.error(this.homey.__('driver.connection_failed_fallback_active', { s: lastError?.message }));
       }
 
       throw lastError || new Error('Connection failed');
@@ -309,7 +309,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       await client.request(null, '/api2/json/version');
       return true;
     } catch (e) {
-      this.error('Connection Test Failed:', e);
+      this.error(this.homey.__('driver.connection_test_failed_ex'), e);
       return false;
     }
   }
@@ -347,7 +347,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       if (!this.getAvailable()) await this.setAvailable();
 
     } catch (error) {
-      this.error('Update Status Failed:', error);
+      this.error(this.homey.__('driver.update_status_failed'), error);
     }
   }
 
@@ -362,7 +362,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   async _updateCapability(id, value) {
     if (!this.hasCapability(id)) return;
     if (this.getCapabilityValue(id) !== value) {
-      await this.setCapabilityValue(id, value).catch(e => this.error(`Failed to set ${id}:`, e));
+      await this.setCapabilityValue(id, value).catch(e => this.error(this.homey.__('driver.failed_to_set_capability', { s: id }), e));
     }
   }
 
@@ -407,15 +407,15 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
             });
           });
       }
-    } catch (e) { this.error('Autocomplete failed', e); }
+    } catch (e) { this.error(this.homey.__('driver.autocomplete_failed'), e); }
     return results;
   }
 
   async executeVmAction(args, action) {
     const { vmid, type } = args.target_vm.id;
-    if (!vmid || !type) throw new Error('Invalid Target');
+    if (!vmid || !type) throw new Error(this.homey.__('error.invalid_target'));
 
-    this.log(`Action ${action} on ${type} ${vmid}`);
+    this.log(this.homey.__('driver.action_log', { s: action, s2: type, s3: vmid }));
 
     // Find Node for VM
     const node = await this._findNodeForVm(vmid, type);
@@ -429,7 +429,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
   async checkVmStatus(args) {
     const { vmid, type } = args.target_vm.id;
-    if (!vmid || !type) throw new Error('Invalid Target');
+    if (!vmid || !type) throw new Error(this.homey.__('error.invalid_target'));
 
     const node = await this._findNodeForVm(vmid, type);
     const endpoint = `/api2/json/nodes/${node}/${type}/${vmid}/status/current`;
@@ -444,7 +444,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     // Given flow runs are user-triggered, safety first.
     const res = await this._executeApiCallWithFallback('/api2/json/cluster/resources', { skipCache: true });
     const target = res?.data?.find(r => r.vmid == vmid && r.type == type); // loose equality just in case of string/int mismatch
-    if (!target || !target.node) throw new Error(`VM ${vmid} not found`);
+    if (!target || !target.node) throw new Error(this.homey.__('error.vm_not_found', { s: vmid }));
     return target.node;
   }
 

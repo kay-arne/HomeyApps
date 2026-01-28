@@ -8,27 +8,27 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
 
   // Driver initialization: Register flow handlers once
   async onInit() {
-    this.log('ProxmoxClusterDriver initializing...');
+    this.log(this.homey.__('driver.cluster_driver_initializing'));
     this.registerFlowHandlers();
-    this.log('ProxmoxClusterDriver initialized and Flow handlers registered.');
+    this.log(this.homey.__('driver.cluster_driver_initialized'));
   }
 
 
   // Custom pairing logic according to SDK v3
   async onPair(session) {
-    this.log('ProxmoxClusterDriver: onPair session started');
-    
+    this.log(this.homey.__('driver.onpair_started'));
+
     // Initialize session data
     this.clusterInfo = null;
-    
+
     // Start with the first view
     await session.showView('connection_setup');
-    
+
     // Handle connection setup and testing - according to SDK documentation
     session.setHandler('connection_setup', async function (data) {
-      
+
       const { hostname, username, api_token_id, api_token_secret, allow_self_signed_certs } = data;
-      
+
       // Validate input
       if (!hostname || !username || !api_token_id || !api_token_secret) {
         return {
@@ -49,7 +49,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
 
         if (testResult.success) {
           const nodeNames = testResult.clusterInfo.nodes.map(node => node.name).join(', ');
-          
+
           // Store cluster info in session for later retrieval
           this.clusterInfo = testResult.clusterInfo;
 
@@ -65,10 +65,10 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
           };
         }
       } catch (error) {
-        this.error('Connection test exception:', error.message);
+        this.error(this.homey.__('driver.connection_test_exception'), error.message);
         return {
           success: false,
-          error: error.message || 'Connection test failed'
+          error: error.message || this.homey.__('error.connection_test_failed')
         };
       }
     }.bind(this));
@@ -85,7 +85,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
   async testProxmoxConnection(credentials) {
     const fetch = require('node-fetch');
     const https = require('https');
-    
+
     try {
       // Create HTTPS agent
       const httpsAgent = new https.Agent({
@@ -107,10 +107,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       });
 
       if (!response.ok) {
-        throw new Error(JSON.stringify({
-          en: `Connection failed: HTTP ${response.status}`,
-          nl: `Verbinding mislukt: HTTP ${response.status}`
-        }));
+        throw new Error(this.homey.__('error_connection_failed_http', response.status));
       }
 
       // Get cluster information
@@ -127,37 +124,31 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       });
 
       if (!clusterResponse.ok) {
-        throw new Error(JSON.stringify({
-          en: `Failed to get cluster information: HTTP ${clusterResponse.status}`,
-          nl: `Kon cluster informatie niet ophalen: HTTP ${clusterResponse.status}`
-        }));
+        throw new Error(this.homey.__('error_cluster_info_failed_http', clusterResponse.status));
       }
 
       const clusterData = await clusterResponse.json();
       const nodes = clusterData.data?.filter(item => item.type === 'node') || [];
 
 
-        return {
-          success: true,
-          clusterInfo: {
-            nodes: nodes.map(node => ({
-              name: node.name,
-              ip: node.ip,
-              online: node.online === 1
-            })),
-            totalNodes: nodes.length,
-            onlineNodes: nodes.filter(node => node.online === 1).length
-          }
-        };
+      return {
+        success: true,
+        clusterInfo: {
+          nodes: nodes.map(node => ({
+            name: node.name,
+            ip: node.ip,
+            online: node.online === 1
+          })),
+          totalNodes: nodes.length,
+          onlineNodes: nodes.filter(node => node.online === 1).length
+        }
+      };
 
     } catch (error) {
-      this.error('Connection test error:', error);
+      this.error(this.homey.__('driver.connection_test_error'), error);
       return {
         success: false,
-        error: error.message || JSON.stringify({
-          en: 'Connection test failed',
-          nl: 'Verbindingstest mislukt'
-        })
+        error: error.message || this.homey.__('error.connection_test_failed')
       };
     }
   }
@@ -166,7 +157,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
 
   // Registers listeners ONCE for the Flow cards associated with this driver type
   registerFlowHandlers() {
-    this.log(`Registering cluster driver flow cards...`);
+    this.log(this.homey.__('driver.registering_flow_cards'));
     try {
       // Helper to register listeners for a card
       const registerCard = (type, id, runListener, autocompleteListener = null) => {
@@ -179,11 +170,11 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
             // Autocomplete listener registered on driver, handler needs context
             arg.registerAutocompleteListener(autocompleteListener.bind(this));
           } else if (autocompleteListener && !arg) {
-             this.error(`Missing argument 'target_vm' on card '${id}'`);
+            this.error(this.homey.__('driver.missing_arg', { s: id }));
           }
-          this.log(`- Listeners for ${type.toLowerCase()} card '${id}' registered.`);
+          this.log(this.homey.__('driver.flow_card_registered', { s: type.toLowerCase(), s2: id }));
         } else {
-          this.error(`Could not find flow ${type.toLowerCase()} card: ${id}`);
+          this.error(this.homey.__('driver.flow_card_not_found', { s: type.toLowerCase(), s2: id }));
         }
       };
 
@@ -193,8 +184,8 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       registerCard('Action', 'shutdown_vm', this.onFlowActionShutdownVm, this.handleFlowArgumentAutocomplete);
       registerCard('Condition', 'vm_is_running', this.onFlowConditionIsRunning, this.handleFlowArgumentAutocomplete);
 
-    } catch (error) { 
-      this.error('CRITICAL ERROR during Flow registration:', error); 
+    } catch (error) {
+      this.error(this.homey.__('driver.critical_error_flow'), error);
       throw error; // Re-throw to prevent app from starting with broken flow cards
     }
   }
@@ -204,32 +195,32 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
   // A more robust solution might require changes to how Homey passes context here.
   // For now, it iterates through all cluster devices if context is unclear.
   async handleFlowArgumentAutocomplete(query, args) {
-      // Try to get the specific device instance if Homey provides it in args
-      const specificDevice = args?.device;
-      const results = [];
+    // Try to get the specific device instance if Homey provides it in args
+    const specificDevice = args?.device;
+    const results = [];
 
-      if (specificDevice) {
-          // If we have the specific device, get results only from it
-          this.log(`Handling autocomplete for specific Cluster Device: [${specificDevice.getName()}], Query: "${query}"`);
-          try {
-              // Delegate to a method on the device instance
-              const deviceResults = await specificDevice.getAutocompleteResults(query);
-              results.push(...deviceResults);
-          } catch (error) { this.error(`Autocomplete API error for [${specificDevice.getName()}]:`, error.message); }
-      } else {
-          // Fallback: If no specific device context, query all cluster devices (less ideal)
-          this.log(`Handling autocomplete GLOBALLY (no specific device context), Query: "${query}"`);
-          const clusterDevices = this.getDevices();
-          for (const device of clusterDevices) {
-              try {
-                  const deviceResults = await device.getAutocompleteResults(query);
-                  // Add cluster name to distinguish results
-                  results.push(...deviceResults.map(r => ({ ...r, name: `${r.name} (@${device.getName()})` })));
-              } catch (deviceError) { this.error(`Autocomplete API error for cluster [${device.getName()}]:`, deviceError.message); }
-          }
+    if (specificDevice) {
+      // If we have the specific device, get results only from it
+      this.log(this.homey.__('driver.autocomplete_device', { s: specificDevice.getName(), s2: query }));
+      try {
+        // Delegate to a method on the device instance
+        const deviceResults = await specificDevice.getAutocompleteResults(query);
+        results.push(...deviceResults);
+      } catch (error) { this.error(`Autocomplete API error for [${specificDevice.getName()}]:`, error.message); }
+    } else {
+      // Fallback: If no specific device context, query all cluster devices (less ideal)
+      this.log(this.homey.__('driver.autocomplete_global', { s: query }));
+      const clusterDevices = this.getDevices();
+      for (const device of clusterDevices) {
+        try {
+          const deviceResults = await device.getAutocompleteResults(query);
+          // Add cluster name to distinguish results
+          results.push(...deviceResults.map(r => ({ ...r, name: `${r.name} (@${device.getName()})` })));
+        } catch (deviceError) { this.error(`Autocomplete API error for cluster [${device.getName()}]:`, deviceError.message); }
       }
-      this.log(`Returning ${results.length} total autocomplete results.`);
-      return results;
+    }
+    this.log(this.homey.__('driver.autocomplete_results', { s: results.length }));
+    return results;
   }
 
 
@@ -239,8 +230,8 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
   async _handleVmAction(args, action) {
     const clusterDevice = args.device; // The specific ProxmoxClusterDevice instance
     if (!clusterDevice || typeof clusterDevice.executeVmAction !== 'function') {
-      this.error(`Flow action ${action} triggered without valid device context or method.`);
-      throw new Error(JSON.stringify({ en: 'Device context missing or invalid.', nl: 'Apparaat context ontbreekt of is ongeldig.' }));
+      this.error(this.homey.__('driver.flow_action_no_context', { s: action }));
+      throw new Error(this.homey.__('error.device_context_missing'));
     }
     // Delegate the action to the specific device instance
     return clusterDevice.executeVmAction(args, action);
@@ -255,8 +246,8 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
   async onFlowConditionIsRunning(args, state) {
     const clusterDevice = args.device; // The specific ProxmoxClusterDevice instance
     if (!clusterDevice || typeof clusterDevice.checkVmStatus !== 'function') {
-      this.error(`Flow condition vm_is_running triggered without valid device context or method.`);
-      throw new Error(JSON.stringify({ en: 'Device context missing or invalid.', nl: 'Apparaat context ontbreekt of is ongeldig.' }));
+      this.error(this.homey.__('driver.flow_condition_no_context'));
+      throw new Error(this.homey.__('error.device_context_missing'));
     }
     // Delegate the check to the specific device instance
     return clusterDevice.checkVmStatus(args);

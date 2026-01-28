@@ -19,5 +19,8 @@
   },
   "0.8.8": {
     "en": "Code optimalisation"
+  },
+  "0.9.0": {
+    "en": "Major Update: Added Node-level monitoring (VM/LXC counts), Robust Cluster Failover with auto-discovery of backup hosts, and significant performance/polling optimizations."
   }
 }

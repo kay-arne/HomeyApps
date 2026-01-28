@@ -10,34 +10,34 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
 
   // Driver initialization: Register flow handlers once
   async onInit() {
-    this.log('ProxmoxNodeDriver initializing...');
+    this.log(this.homey.__('driver.node_driver_initializing'));
     this.registerFlowHandlers();
-    this.log('ProxmoxNodeDriver initialized and Flow handlers registered.');
+    this.log(this.homey.__('driver.node_driver_initialized'));
   }
 
   // Handles the multi-step pairing process (combined list)
   async onPair(session) {
-    this.log(`NodeDriver: onPair session started.`);
+    this.log(this.homey.__('driver.node_onpair_started'));
     try {
-      session.setHandler('show', async (viewId) => { this.log(`NodeDriver: Pairing view shown: ${viewId}`); });
+      session.setHandler('show', async (viewId) => { this.log(this.homey.__('driver.node_pairing_view', { s: viewId })); });
       session.setHandler('list_devices', async (data) => {
-        this.log(`NodeDriver: list_devices handler called.`);
+        this.log(this.homey.__('driver.node_list_devices'));
         try {
           // Step 1: Get all configured cluster devices
           let clusterDevices = [];
           try {
             const clusterDriver = this.homey.drivers.getDriver('proxmox-cluster');
             clusterDevices = clusterDriver.getDevices();
-            this.log(`NodeDriver: Found ${clusterDevices.length} cluster devices.`);
+            this.log(this.homey.__('driver.node_found_clusters', { s: clusterDevices.length }));
           } catch (driverError) { throw new Error('Could not retrieve cluster devices.'); }
-          if (clusterDevices.length === 0) { throw new Error(JSON.stringify({ en: 'No Proxmox Cluster devices configured yet.', nl: 'Nog geen Proxmox Cluster apparaten geconfigureerd.' })); }
+          if (clusterDevices.length === 0) { throw new Error(this.homey.__('error.no_cluster_devices')); }
 
           // Step 2: Fetch nodes from ALL clusters in parallel
-          this.log('NodeDriver: Fetching nodes from all clusters...');
+          this.log(this.homey.__('driver.node_fetching'));
           const nodeFetchPromises = clusterDevices.map(clusterDevice =>
             this._fetchNodesForCluster(clusterDevice) // Pass device object
               .catch(error => {
-                this.error(`NodeDriver: Failed to fetch nodes for cluster ${clusterDevice.getName()}:`, error.message);
+                this.error(this.homey.__('driver.node_fetch_failed', { s: clusterDevice.getName(), s2: error.message }));
                 return []; // Return empty list on error for this cluster
               })
           );
@@ -48,7 +48,7 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
           const existingNodeDevices = this.getDevices();
           const existingNodeIds = existingNodeDevices.map(device => device.getData().id);
           const nodesToAdd = allDiscoveredNodes.filter(node => !existingNodeIds.includes(node.data.id));
-          this.log(`NodeDriver: Returning ${nodesToAdd.length} unpaired node(s).`);
+          this.log(this.homey.__('driver.node_returning', { s: nodesToAdd.length }));
 
           // Step 4: Return formatted list
           return nodesToAdd.map(node => {
@@ -60,19 +60,19 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
             };
           });
         } catch (handlerError) {
-          this.error('NodeDriver: Error inside list_devices handler:', handlerError);
+          this.error(this.homey.__('driver.node_list_devices_error'), handlerError);
           throw handlerError; // Propagate error to UI
         }
       });
 
       // Handler after nodes are selected
       session.setHandler('list_all_nodes.done', async (selectedListData) => {
-        this.log(`NodeDriver: list_all_nodes.done handler triggered. Selected nodes:`, selectedListData.map(d => d.name));
+        this.log(this.homey.__('driver.node_list_done', { s: selectedListData.map(d => d.name) }));
         return true; // Finalize pairing
       });
 
     } catch (registrationError) {
-      this.error('NodeDriver: CRITICAL Error during handler registration in onPair:', registrationError);
+      this.error(this.homey.__('driver.node_critical_error_pair'), registrationError);
     }
   }
 
@@ -83,7 +83,7 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
 
     const clusterDeviceId = clusterDevice.getData().id;
     const clusterDeviceName = clusterDevice.getName();
-    this.log(`NodeDriver: Fetching nodes via cluster: ${clusterDeviceName}`);
+    this.log(this.homey.__('driver.node_fetching_via', { s: clusterDeviceName }));
 
     try {
       // Use the cluster device's public API call method (ensure it's accessible or replicate logic)
@@ -93,7 +93,7 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
       if (Array.isArray(nodesData?.data)) {
         nodesData.data.forEach(node => {
           if (node.node && node.status === 'online') {
-            this.log(`NodeDriver: Mapping online node: ${node.node} from cluster ${clusterDeviceName}`);
+            this.log(this.homey.__('driver.node_mapping', { s: node.node, s2: clusterDeviceName }));
             discoveredNodes.push({
               name: node.node, // Original node name
               data: {
@@ -108,7 +108,7 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
         });
       }
     } catch (error) {
-      this.error(`NodeDriver: Error fetching nodes for cluster ${clusterDeviceName}:`, error);
+      this.error(this.homey.__('driver.node_fetch_error', { s: clusterDeviceName, s2: error }));
       // Don't throw, just return empty list for this cluster
     }
     return discoveredNodes;
@@ -119,26 +119,26 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
 
   // Registers listeners for Flow cards associated with THIS driver
   registerFlowHandlers() {
-    this.log(`Registering node driver flow cards...`);
+    this.log(this.homey.__('driver.node_registering_flow'));
     try {
       // Register Shutdown Node Action
       const shutdownNodeAction = this.homey.flow.getActionCard('shutdown_node');
       if (shutdownNodeAction) {
         // Pass action name 'shutdown' using .bind()
         shutdownNodeAction.registerRunListener(this.onFlowActionPower.bind(this, 'shutdown'));
-        this.log(`- Run listener for shutdown_node registered.`);
-      } else { this.error('Could not find flow action card: shutdown_node'); }
+        this.log(this.homey.__('driver.node_shutdown_registered'));
+      } else { this.error(this.homey.__('driver.node_flow_not_found', { s: 'shutdown_node' })); }
 
       // Register Stop Node Action
       const stopNodeAction = this.homey.flow.getActionCard('stop_node');
       if (stopNodeAction) {
         // Pass action name 'stop' using .bind()
         stopNodeAction.registerRunListener(this.onFlowActionPower.bind(this, 'stop'));
-        this.log(`- Run listener for stop_node registered.`);
-      } else { this.error('Could not find flow action card: stop_node'); }
+        this.log(this.homey.__('driver.node_stop_registered'));
+      } else { this.error(this.homey.__('driver.node_flow_not_found', { s: 'stop_node' })); }
 
     } catch (error) {
-      this.error('CRITICAL ERROR during Node Flow registration:', error);
+      this.error(this.homey.__('driver.node_critical_error_flow'), error);
     }
   }
 
@@ -147,12 +147,12 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
   async onFlowActionPower(action, args, state) {
     const nodeDevice = args.device; // The specific ProxmoxNodeDevice instance
     if (!nodeDevice) {
-      this.error(`Flow action ${action}_node triggered without device context.`);
-      throw new Error(JSON.stringify({ en: 'Device context missing.', nl: 'Apparaat context ontbreekt.' }));
+      this.error(this.homey.__('driver.node_flow_action_no_context', { s: action }));
+      throw new Error(this.homey.__('error.device_context_missing'));
     }
 
     const nodeName = nodeDevice.getData().id;
-    this.log(`Flow action ${action}_node triggered FOR node [${nodeName}] (Device: ${nodeDevice.getName()})`);
+    this.log(this.homey.__('driver.node_flow_triggered', { s: action, s2: nodeName, s3: nodeDevice.getName() }));
 
     try {
       // Delegate the action to the specific device instance
@@ -160,7 +160,7 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
       return true; // Indicate success to Homey Flow
 
     } catch (error) {
-      this.error(`Failed to ${action} node [${nodeName}]:`, error.message);
+      this.error(this.homey.__('driver.node_action_failed', { s: action, s2: nodeName }), error.message);
       // Re-throw the error (should already be translated by device method)
       throw error;
     }

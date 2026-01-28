@@ -26,9 +26,9 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
           // Step 1: Get all configured cluster devices
           let clusterDevices = [];
           try {
-              const clusterDriver = this.homey.drivers.getDriver('proxmox-cluster');
-              clusterDevices = clusterDriver.getDevices();
-              this.log(`NodeDriver: Found ${clusterDevices.length} cluster devices.`);
+            const clusterDriver = this.homey.drivers.getDriver('proxmox-cluster');
+            clusterDevices = clusterDriver.getDevices();
+            this.log(`NodeDriver: Found ${clusterDevices.length} cluster devices.`);
           } catch (driverError) { throw new Error('Could not retrieve cluster devices.'); }
           if (clusterDevices.length === 0) { throw new Error(JSON.stringify({ en: 'No Proxmox Cluster devices configured yet.', nl: 'Nog geen Proxmox Cluster apparaten geconfigureerd.' })); }
 
@@ -52,32 +52,32 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
 
           // Step 4: Return formatted list
           return nodesToAdd.map(node => {
-              const clusterDevice = clusterDevices.find(cd => cd.getData().id === node.data.serverId);
-              const clusterName = clusterDevice ? clusterDevice.getName() : 'Unknown';
-              return {
-                  ...node,
-                  name: `${node.name} (@${clusterName})` // Add cluster name for clarity
-              };
+            const clusterDevice = clusterDevices.find(cd => cd.getData().id === node.data.serverId);
+            const clusterName = clusterDevice ? clusterDevice.getName() : 'Unknown';
+            return {
+              ...node,
+              name: `${node.name} (@${clusterName})` // Add cluster name for clarity
+            };
           });
         } catch (handlerError) {
-           this.error('NodeDriver: Error inside list_devices handler:', handlerError);
-           throw handlerError; // Propagate error to UI
+          this.error('NodeDriver: Error inside list_devices handler:', handlerError);
+          throw handlerError; // Propagate error to UI
         }
       });
 
       // Handler after nodes are selected
       session.setHandler('list_all_nodes.done', async (selectedListData) => {
-          this.log(`NodeDriver: list_all_nodes.done handler triggered. Selected nodes:`, selectedListData.map(d => d.name));
-          return true; // Finalize pairing
+        this.log(`NodeDriver: list_all_nodes.done handler triggered. Selected nodes:`, selectedListData.map(d => d.name));
+        return true; // Finalize pairing
       });
 
     } catch (registrationError) {
-       this.error('NodeDriver: CRITICAL Error during handler registration in onPair:', registrationError);
+      this.error('NodeDriver: CRITICAL Error during handler registration in onPair:', registrationError);
     }
   }
 
-   // Helper function to fetch nodes for a specific cluster device object
-   async _fetchNodesForCluster(clusterDevice) {
+  // Helper function to fetch nodes for a specific cluster device object
+  async _fetchNodesForCluster(clusterDevice) {
     const discoveredNodes = [];
     if (!clusterDevice) return discoveredNodes;
 
@@ -93,17 +93,17 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
       if (Array.isArray(nodesData?.data)) {
         nodesData.data.forEach(node => {
           if (node.node && node.status === 'online') {
-             this.log(`NodeDriver: Mapping online node: ${node.node} from cluster ${clusterDeviceName}`);
-             discoveredNodes.push({
-               name: node.node, // Original node name
-               data: {
-                 id: node.node, // Node name as the unique ID
-                 serverId: clusterDeviceId // Link to the cluster device
-               },
-               // Define capabilities for the node device being added
-               capabilities: ['measure_memory_usage_perc', 'measure_cpu_usage_perc','alarm_node_status'],
-               icon: "/server.svg",
-             });
+            this.log(`NodeDriver: Mapping online node: ${node.node} from cluster ${clusterDeviceName}`);
+            discoveredNodes.push({
+              name: node.node, // Original node name
+              data: {
+                id: node.node, // Node name as the unique ID
+                serverId: clusterDeviceId // Link to the cluster device
+              },
+              // Define capabilities for the node device being added
+              capabilities: ['measure_memory_usage_perc', 'measure_cpu_usage_perc', 'alarm_node_status'],
+              icon: "/assets/nodes.svg",
+            });
           } // else { log skipping }
         });
       }
@@ -138,7 +138,7 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
       } else { this.error('Could not find flow action card: stop_node'); }
 
     } catch (error) {
-         this.error('CRITICAL ERROR during Node Flow registration:', error);
+      this.error('CRITICAL ERROR during Node Flow registration:', error);
     }
   }
 

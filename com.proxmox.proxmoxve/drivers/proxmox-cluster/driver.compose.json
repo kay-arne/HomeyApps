@@ -11,7 +11,9 @@
     "alarm_connection_fallback",
     "status_connected_host"
   ],
-  "$extends": ["defaults"],
+  "$extends": [
+    "defaults"
+  ],
   "settings": [
     {
       "id": "hostname",
@@ -77,12 +79,55 @@
       },
       "value": "5",
       "values": [
-        { "id": "0",   "label": { "en": "Disabled", "nl": "Uitgeschakeld" } },
-        { "id": "0.5", "label": { "en": "30 Seconds", "nl": "30 Seconden" } },
-        { "id": "1",   "label": { "en": "1 Minute", "nl": "1 Minuut" } },
-        { "id": "5",   "label": { "en": "5 Minutes", "nl": "5 Minuten" } },
-        { "id": "10",  "label": { "en": "10 Minutes", "nl": "10 Minuten" } }
+        {
+          "id": "0",
+          "label": {
+            "en": "Disabled",
+            "nl": "Uitgeschakeld"
+          }
+        },
+        {
+          "id": "0.5",
+          "label": {
+            "en": "30 Seconds",
+            "nl": "30 Seconden"
+          }
+        },
+        {
+          "id": "1",
+          "label": {
+            "en": "1 Minute",
+            "nl": "1 Minuut"
+          }
+        },
+        {
+          "id": "5",
+          "label": {
+            "en": "5 Minutes",
+            "nl": "5 Minuten"
+          }
+        },
+        {
+          "id": "10",
+          "label": {
+            "en": "10 Minutes",
+            "nl": "10 Minuten"
+          }
+        }
       ]
+    },
+    {
+      "id": "backup_hosts",
+      "type": "text",
+      "label": {
+        "en": "Backup Node IPs (Advanced)",
+        "nl": "Backup Node IP's (Geavanceerd)"
+      },
+      "hint": {
+        "en": "Comma-separated list of fallback IPs. Auto-updated by the app.",
+        "nl": "Komma-gescheiden lijst van fallback IP's. Auto-geupdate door de app."
+      },
+      "value": ""
     }
   ],
   "pair": [

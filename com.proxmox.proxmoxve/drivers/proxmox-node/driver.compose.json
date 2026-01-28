@@ -7,9 +7,27 @@
   "capabilities": [
     "measure_cpu_usage_perc",
     "measure_memory_usage_perc",
-    "alarm_node_status"
+    "alarm_node_status",
+    "measure_vm_count",
+    "measure_lxc_count"
   ],
-  "$extends": ["defaults"],
+  "$extends": [
+    "defaults"
+  ],
+  "capabilitiesOptions": {
+    "measure_vm_count": {
+      "title": {
+        "en": "Active VMs",
+        "nl": "Actieve VM's"
+      }
+    },
+    "measure_lxc_count": {
+      "title": {
+        "en": "Active LXCs",
+        "nl": "Actieve LXC's"
+      }
+    }
+  },
   "settings": [
     {
       "id": "poll_interval_node",
@@ -24,11 +42,41 @@
       },
       "value": "1",
       "values": [
-        { "id": "0",   "label": { "en": "Disabled", "nl": "Uitgeschakeld" } },
-        { "id": "0.5", "label": { "en": "30 Seconds", "nl": "30 Seconden" } },
-        { "id": "1",   "label": { "en": "1 Minute", "nl": "1 Minuut" } },
-        { "id": "5",   "label": { "en": "5 Minutes", "nl": "5 Minuten" } },
-        { "id": "10",  "label": { "en": "10 Minutes", "nl": "10 Minuten" } }
+        {
+          "id": "0",
+          "label": {
+            "en": "Disabled",
+            "nl": "Uitgeschakeld"
+          }
+        },
+        {
+          "id": "0.5",
+          "label": {
+            "en": "30 Seconds",
+            "nl": "30 Seconden"
+          }
+        },
+        {
+          "id": "1",
+          "label": {
+            "en": "1 Minute",
+            "nl": "1 Minuut"
+          }
+        },
+        {
+          "id": "5",
+          "label": {
+            "en": "5 Minutes",
+            "nl": "5 Minuten"
+          }
+        },
+        {
+          "id": "10",
+          "label": {
+            "en": "10 Minutes",
+            "nl": "10 Minuten"
+          }
+        }
       ]
     }
   ],

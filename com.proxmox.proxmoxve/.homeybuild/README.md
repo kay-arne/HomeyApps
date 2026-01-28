@@ -112,6 +112,9 @@ If your Proxmox server uses self-signed certificates:
 
 ## 🐛 Troubleshooting
 
+### Known Issues
+- **Frontend Updates**: In some cases, the Homey frontend may not immediately reflect capability value changes (e.g., VM/LXC counts). The backend polling works correctly, but the UI may show cached values. This is a known limitation that we're working to resolve.
+
 ### Connection Issues
 1. **Check network connectivity** between Homey and Proxmox server
 2. **Verify API token permissions** in Proxmox
@@ -122,6 +125,7 @@ If your Proxmox server uses self-signed certificates:
 - **"Connection failed"**: Check hostname/IP and network connectivity
 - **"Authentication failed"**: Verify username and API token
 - **"SSL certificate error"**: Enable self-signed certificates or fix SSL setup
+- **"Values not updating in UI"**: This is a known issue - backend polling works, but frontend may show cached values
 
 ### Debug Mode
 Enable debug logging in device settings for detailed troubleshooting information.

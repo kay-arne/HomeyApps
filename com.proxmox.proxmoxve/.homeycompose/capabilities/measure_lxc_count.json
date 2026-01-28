@@ -1,14 +1,14 @@
 {
-    "type": "number",
-    "title": {
-      "en": "Active LXC Count",
-      "nl": "Actieve LXC's"
-    },
-    "getable": true,
-    "setable": false,
-    "decimals": 0,
-    "min": 0,
-    "uiComponent": "sensor",
-    "icon": "assets/container.svg",
-    "insights": true
+  "type": "number",
+  "title": {
+    "en": "Total Active LXCs",
+    "nl": "Totaal Actieve LXC's"
+  },
+  "getable": true,
+  "setable": false,
+  "decimals": 0,
+  "min": 0,
+  "uiComponent": "sensor",
+  "icon": "assets/container.svg",
+  "insights": true
 }

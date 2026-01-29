@@ -28,5 +28,20 @@
   },
   "1.0.0": {
     "en": "Production Release: Strict timeout fixes, polling persistence fixes, and UI improvements."
+  },
+  "1.0.1": {
+    "en": "Fixed a startup crash (race condition) where the app could restart continuously."
+  },
+  "1.0.2": {
+    "en": "Improved startup resilience: Nodes now automatically retry if the cluster is not yet ready."
+  },
+  "1.0.3": {
+    "en": "Fixed an issue where nodes could appear offline after a restart due to initialization timing."
+  },
+  "1.0.4": {
+    "en": "Improved startup stability: Proactive check to ensure cluster lies ready before node initialization."
+  },
+  "1.0.5": {
+    "en": "Optimization: Instant failback to the Primary Node as soon as it becomes available."
   }
 }

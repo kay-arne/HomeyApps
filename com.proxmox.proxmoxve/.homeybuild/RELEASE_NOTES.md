@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.0.0 - Production Release
+
+### 🚀 Major Improvements
+- **Strict Timeout for Node Checks**: Implemented a forced 3-second timeout for the "Node is online" flow card. This ensures reliability even if the underlying network layer (like DNS or Socket) hangs, preventing 30s+ delays.
+- **Production Readiness**:
+    - Full security review and linting cleanup.
+    - Passed official Homey Store validation (`publish` level).
+
+### 🐛 Fixes
+- **Polling Persistence**: Fixed a bug where setting polling to "0" (or Disabled) would revert to default on app restart.
+- **UI Consistency**: Updated Memory capability icon to match the CPU icon style.
+
 ## v0.9.0 - Major Performance & Reliability Update
 
 ### 🚀 New Features

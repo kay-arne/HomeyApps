@@ -252,6 +252,9 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     }
 
     const requestPromise = (async () => {
+      // Guard against race condition where NodeDevice calls this before ClusterDevice.onInit() completes
+      if (!this.hostManager) throw new Error('Cluster device not fully initialized.');
+
       const hosts = this.hostManager.getOrderedHostList();
       if (hosts.length === 0) throw new Error('No available hosts.');
 

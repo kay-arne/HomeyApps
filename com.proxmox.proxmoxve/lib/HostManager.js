@@ -55,7 +55,7 @@ class HostManager {
       current.lastSeen = now;
       current.status = 'healthy';
       current.responseTime = responseTime;
-      current.failureCount = Math.max(0, current.failureCount - 1);
+      current.failureCount = 0; // Immediate forgiveness: if it works, we trust it again instantly
       this._resetCircuitBreaker(host);
     } else {
       current.failureCount++;

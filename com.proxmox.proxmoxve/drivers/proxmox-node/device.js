@@ -8,21 +8,42 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
   // === LIFECYCLE METHODS ===
 
   async onInit() {
-    const nodeName = this.getName();
+    this.log(`Initializing node: ${this.getName()}`);
     this.activeTimeouts = new Set();
     this.updateIntervalId = null;
 
-    this.log(`Initializing node: ${nodeName}`);
+    await this._initializeWithRetry();
+  }
+
+  async _initializeWithRetry() {
+    const nodeName = this.getName();
+    const serverId = this.getData().serverId;
+    if (!serverId) throw new Error('serverId is missing. Please re-pair.');
+
+    // Proactive Check: Is cluster ready?
+    // We do this to avoid throwing an Error which looks like a crash.
+    try {
+      const cluster = await this.homey.drivers.getDriver('proxmox-cluster').getDevice({ id: serverId });
+      if (!cluster || !cluster.hostManager) {
+        this.log(`Cluster device [${serverId}] not ready yet. Waiting...`);
+        this._createManagedTimeout(() => this._initializeWithRetry(), 5000);
+        return;
+      }
+    } catch (e) {
+      // Driver or device not found yet
+      this.log(`Cluster driver/device not ready. Waiting...`);
+      this._createManagedTimeout(() => this._initializeWithRetry(), 5000);
+      return;
+    }
 
     try {
-      if (!this.getData().serverId) {
-        throw new Error('serverId is missing. Please re-pair.');
-      }
-
       if (!this.hasCapability('measure_vm_count')) await this.addCapability('measure_vm_count');
       if (!this.hasCapability('measure_lxc_count')) await this.addCapability('measure_lxc_count');
 
+      // Attempt to fetch first status update
       await this.updateNodeStatus();
+
+      // If successful, start periodic polling
       this.startPolling();
     } catch (error) {
       this.error('Init Error:', error);

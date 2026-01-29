@@ -25,7 +25,7 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
       await this.updateNodeStatus();
       this.startPolling();
     } catch (error) {
-      this.error(`Init Error:`, error);
+      this.error('Init Error:', error);
       await this._updateCapability('alarm_node_status', true).catch(this.error);
     }
   }
@@ -41,7 +41,9 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
     }
   }
 
-  async onRenamed(name) { this.log(`Renamed to ${name}`); }
+  async onRenamed(name) {
+    this.log(`Renamed to ${name}`);
+  }
 
   async onDeleted() {
     this.log(`Deleted: ${this.getName()}`);
@@ -54,7 +56,10 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
   startPolling(interval = null) {
     this.stopPolling();
     const val = interval !== null ? interval : this.getSetting('poll_interval_node');
-    const pollIntervalMinutes = parseFloat(val || '5');
+    // Ensure 0 is handled correctly and default to 1 (matching app.json)
+    const effectiveVal = (val !== null && val !== undefined && val !== '') ? val : '1';
+
+    const pollIntervalMinutes = parseFloat(effectiveVal);
     if (isNaN(pollIntervalMinutes) || pollIntervalMinutes <= 0) return;
 
     const pollIntervalMs = pollIntervalMinutes * 60 * 1000;
@@ -85,14 +90,14 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
 
   // === NODE STATUS & ACTION ===
 
-  async updateNodeStatus() {
+  async updateNodeStatus(options = {}) {
     const nodeName = this.getData().id;
     try {
       const cluster = await this._getClusterDevice();
 
       const [statusRes, resourcesRes] = await Promise.all([
-        cluster._executeApiCallWithFallback(`/api2/json/nodes/${nodeName}/status`, { refreshCache: true }),
-        cluster._executeApiCallWithFallback('/api2/json/cluster/resources', { refreshCache: true })
+        cluster._executeApiCallWithFallback(`/api2/json/nodes/${nodeName}/status`, { ...options, refreshCache: true }),
+        cluster._executeApiCallWithFallback('/api2/json/cluster/resources', { ...options, refreshCache: true }),
       ]);
 
       if (statusRes?.data) {
@@ -117,9 +122,9 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
 
       // Update VM/LXC Counts
       if (resourcesRes?.data) {
-        const activeResources = resourcesRes.data.filter(r => r.node === nodeName && r.status === 'running');
-        const vmCount = activeResources.filter(r => r.type === 'qemu').length;
-        const lxcCount = activeResources.filter(r => r.type === 'lxc').length;
+        const activeResources = resourcesRes.data.filter((r) => r.node === nodeName && r.status === 'running');
+        const vmCount = activeResources.filter((r) => r.type === 'qemu').length;
+        const lxcCount = activeResources.filter((r) => r.type === 'lxc').length;
 
         await this._updateCapability('measure_vm_count', vmCount);
         await this._updateCapability('measure_lxc_count', lxcCount);
@@ -143,7 +148,7 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
       await cluster._executeApiCallWithFallback(endpoint, {
         method: 'POST',
         body: `command=${action}`,
-        timeout: (action === 'shutdown' ? 60000 : 15000)
+        timeout: (action === 'shutdown' ? 60000 : 15000),
       });
 
       this._createManagedTimeout(() => this.updateNodeStatus().catch(this.error), 2000);
@@ -157,7 +162,7 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
   async _updateCapability(id, value) {
     if (!this.hasCapability(id)) return;
     if (this.getCapabilityValue(id) !== value || id === 'alarm_node_status') {
-      await this.setCapabilityValue(id, value).catch(e => this.error(e));
+      await this.setCapabilityValue(id, value).catch((e) => this.error(e));
     }
   }
 
@@ -170,8 +175,8 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
   }
 
   _clearAllTimeouts() {
-    this.activeTimeouts.forEach(id => this.homey.clearTimeout(id));
+    this.activeTimeouts.forEach((id) => this.homey.clearTimeout(id));
     this.activeTimeouts.clear();
   }
 
-}
+};

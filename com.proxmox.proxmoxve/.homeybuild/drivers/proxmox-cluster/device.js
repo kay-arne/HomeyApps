@@ -52,7 +52,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       username: s.username,
       tokenId: s.api_token_id,
       tokenSecret: s.api_token_secret,
-      allow_self_signed_certs: s.allow_self_signed_certs || false
+      allow_self_signed_certs: s.allow_self_signed_certs || false,
     };
   }
 
@@ -87,11 +87,13 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
         this.startPolling(newSettings.poll_interval_cluster);
       }
     } catch (error) {
-      this.error(`Error processing settings update:`, error);
+      this.error('Error processing settings update:', error);
     }
   }
 
-  async onRenamed(name) { this.log(this.homey.__('driver.renamed', { s: name })); }
+  async onRenamed(name) {
+    this.log(this.homey.__('driver.renamed', { s: name }));
+  }
 
   async onDeleted() {
     this.log(this.homey.__('driver.deleted', { s: this.getName() }));
@@ -105,7 +107,10 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   startPolling(interval = null) {
     this.stopPolling();
     const val = interval !== null ? interval : this.getSetting('poll_interval_cluster');
-    const pollIntervalMinutes = parseFloat(val || '5');
+    // Ensure 0 is handled correctly
+    const effectiveVal = (val !== null && val !== undefined && val !== '') ? val : '5';
+
+    const pollIntervalMinutes = parseFloat(effectiveVal);
     if (isNaN(pollIntervalMinutes) || pollIntervalMinutes <= 0) return;
 
     const pollIntervalMs = pollIntervalMinutes * 60 * 1000;
@@ -130,7 +135,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   _getBackupHostsFromSettings() {
     const raw = this.getSetting('backup_hosts');
     if (!raw) return [];
-    return raw.split(',').map(s => s.trim()).filter(s => s.length > 0 && s !== this.hostManager.primaryHost);
+    return raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0 && s !== this.hostManager.primaryHost);
   }
 
   // === HOST MANAGEMENT ===
@@ -164,22 +169,22 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     // 1. Check Cluster Status via Primary (or Preferred) to detect nodes
     try {
       // We use executeApiCallWithFallback to ensure we get data if primary is down but backup works
-      // We do NOT use refreshCache here to avoid storming if health check is frequent, 
-      // but health check is mostly about connectivity. 
+      // We do NOT use refreshCache here to avoid storming if health check is frequent,
+      // but health check is mostly about connectivity.
       // Actually, status needs to be fresh-ish, let's skip cache or refresh?
       // Health check pings specific IPs anyway.
       const statusData = await this._executeApiCallWithFallback('/api2/json/cluster/status', { refreshCache: true });
       if (!Array.isArray(statusData?.data)) return;
 
       const onlineNodes = statusData.data
-        .filter(n => n.type === 'node' && n.online === 1 && n.ip)
-        .map(n => n.ip);
+        .filter((n) => n.type === 'node' && n.online === 1 && n.ip)
+        .map((n) => n.ip);
 
       // --- AUTO-SAVE BACKUP HOSTS ---
       // Update the list of backup hosts settings if it differs from what we found
       // ensuring we have the latest IPs for next boot if primary is down.
       const currentBackupSettings = this._getBackupHostsFromSettings();
-      const newBackupHosts = onlineNodes.filter(ip => ip !== this.hostManager.primaryHost && ip !== this.getSetting('hostname'));
+      const newBackupHosts = onlineNodes.filter((ip) => ip !== this.hostManager.primaryHost && ip !== this.getSetting('hostname'));
 
       // Simple equality check to avoid thrashing settings
       const sortedCurrent = [...currentBackupSettings].sort().join(',');
@@ -187,7 +192,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
       if (sortedCurrent !== sortedNew) {
         this.log(this.homey.__('driver.updating_backup_hosts', { s: sortedNew }));
-        await this.setSettings({ backup_hosts: sortedNew }).catch(e => this.error(this.homey.__('driver.failed_update_backup_hosts'), e));
+        await this.setSettings({ backup_hosts: sortedNew }).catch((e) => this.error(this.homey.__('driver.failed_update_backup_hosts'), e));
         // Note: HostManager will pick this up on restart, or we can feed it live if we wanted to be fancy,
         // but health check already discovers "otherNodes" below anyway.
       }
@@ -203,7 +208,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       if (this.hostManager.preferredHost) nodesToPing.add(this.hostManager.preferredHost);
 
       // Add one random other online node
-      const otherNodes = onlineNodes.filter(ip => !nodesToPing.has(ip));
+      const otherNodes = onlineNodes.filter((ip) => !nodesToPing.has(ip));
       if (otherNodes.length > 0) {
         nodesToPing.add(otherNodes[Math.floor(Math.random() * otherNodes.length)]);
       }
@@ -251,13 +256,29 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       if (hosts.length === 0) throw new Error('No available hosts.');
 
       let lastError = null;
+      const startTime = Date.now();
+      const deadline = options.timeout ? (startTime + options.timeout) : null;
 
       for (const host of hosts) {
+        // Enforce total deadline
+        let currentTimeout = options.timeout;
+
+        if (deadline) {
+          const remaining = deadline - Date.now();
+          if (remaining <= 50) { // Safety margin
+            // Deadline exceeded before we could try this host
+            break;
+          }
+          currentTimeout = remaining;
+        }
+
         try {
-          const result = await this.proxmoxClient.request(host, urlPath, options);
+          // Clone options to avoid mutating original, override timeout
+          const reqOptions = { ...options, timeout: currentTimeout };
+          const result = await this.proxmoxClient.request(host, urlPath, reqOptions);
 
           // Success
-          this.hostManager.updateHostStatus(host, true, 0); // Latency not measured here easily without wrapper, assume 0/fast enough or rely on health check
+          this.hostManager.updateHostStatus(host, true, 0);
           await this._updateConnectionCapabilities(host, false);
 
           return result;
@@ -270,14 +291,15 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
           if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
             throw error;
           }
-          // Else (Network/5xx), try next host
+          // Else (Network/5xx/Timeout), try next host
         }
       }
 
       // If we are already in fallback mode, avoid flapping the UI with "Unavailable"
       // unless it's a critical logic error. Stale data is better than a flashing error.
       if (!this.getCapabilityValue('alarm_connection_fallback')) {
-        await this.setUnavailable(this.homey.__('driver.connection_failed_fallback', { s: lastError?.message })).catch(this.error);
+        const msg = lastError ? lastError.message : 'Connection failed (Timeout)';
+        await this.setUnavailable(this.homey.__('driver.connection_failed_fallback', { s: msg })).catch(this.error);
       } else {
         this.error(this.homey.__('driver.connection_failed_fallback_active', { s: lastError?.message }));
       }
@@ -324,14 +346,14 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       // Process Node Count
       let nodeCount = 0;
       if (Array.isArray(statusData?.data)) {
-        nodeCount = statusData.data.filter(n => n.type === 'node' && n.online === 1).length;
+        nodeCount = statusData.data.filter((n) => n.type === 'node' && n.online === 1).length;
       }
 
       // Process VM/LXC Count
       let vmCount = 0;
       let lxcCount = 0;
       if (Array.isArray(resourcesData?.data)) {
-        resourcesData.data.forEach(r => {
+        resourcesData.data.forEach((r) => {
           if (r.status === 'running') {
             if (r.type === 'qemu') vmCount++;
             if (r.type === 'lxc') lxcCount++;
@@ -362,7 +384,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   async _updateCapability(id, value) {
     if (!this.hasCapability(id)) return;
     if (this.getCapabilityValue(id) !== value) {
-      await this.setCapabilityValue(id, value).catch(e => this.error(this.homey.__('driver.failed_to_set_capability', { s: id }), e));
+      await this.setCapabilityValue(id, value).catch((e) => this.error(this.homey.__('driver.failed_to_set_capability', { s: id }), e));
     }
   }
 
@@ -385,7 +407,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   }
 
   _clearAllTimeouts() {
-    this.activeTimeouts.forEach(id => this.homey.clearTimeout(id));
+    this.activeTimeouts.forEach((id) => this.homey.clearTimeout(id));
     this.activeTimeouts.clear();
   }
 
@@ -398,16 +420,18 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       if (Array.isArray(res?.data)) {
         const q = query.toLowerCase();
         res.data
-          .filter(r => (r.type === 'qemu' || r.type === 'lxc') &&
-            (r.vmid.toString().includes(q) || (r.name && r.name.toLowerCase().includes(q))))
-          .forEach(r => {
+          .filter((r) => (r.type === 'qemu' || r.type === 'lxc')
+            && (r.vmid.toString().includes(q) || (r.name && r.name.toLowerCase().includes(q))))
+          .forEach((r) => {
             results.push({
               name: `${r.name || 'Unknown'} (${r.type} ${r.vmid})`,
-              id: { vmid: r.vmid, type: r.type, name: r.name }
+              id: { vmid: r.vmid, type: r.type, name: r.name },
             });
           });
       }
-    } catch (e) { this.error(this.homey.__('driver.autocomplete_failed'), e); }
+    } catch (e) {
+      this.error(this.homey.__('driver.autocomplete_failed'), e);
+    }
     return results;
   }
 
@@ -439,13 +463,13 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   }
 
   async _findNodeForVm(vmid, type) {
-    // Also skip cache here to handle migrations correctly? 
+    // Also skip cache here to handle migrations correctly?
     // Resources call is heavy, but if we don't, checkVmStatus might fail if node migrated recently.
     // Given flow runs are user-triggered, safety first.
     const res = await this._executeApiCallWithFallback('/api2/json/cluster/resources', { skipCache: true });
-    const target = res?.data?.find(r => r.vmid == vmid && r.type == type); // loose equality just in case of string/int mismatch
+    const target = res?.data?.find((r) => r.vmid == vmid && r.type == type); // loose equality just in case of string/int mismatch
     if (!target || !target.node) throw new Error(this.homey.__('error.vm_not_found', { s: vmid }));
     return target.node;
   }
 
-}
+};

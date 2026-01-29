@@ -1,16 +1,16 @@
 {
   "type": "number",
-  "title": { 
-    "en": "Memory Usage", 
-    "nl": "Geheugengebruik" 
+  "title": {
+    "en": "Memory Usage",
+    "nl": "Geheugengebruik"
   },
-  "getable": true, 
+  "getable": true,
   "setable": false,
-  "units": "%", 
-  "decimals": 1, 
-  "min": 0, 
+  "units": "%",
+  "decimals": 1,
+  "min": 0,
   "max": 100,
   "uiComponent": "sensor",
-  "icon": "assets/memory.svg",
+  "icon": "assets/cpu.svg",
   "insights": true
 }

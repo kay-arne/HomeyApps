@@ -1,9 +1,7 @@
 'use strict';
 
 const Homey = require('homey');
-const fetch = require('node-fetch'); // node-fetch@2
-const https = require('https');
-const crypto = require('crypto'); // For pairing temporary ID
+
 
 // Driver for individual Proxmox Node devices
 module.exports = class ProxmoxNodeDriver extends Homey.Driver {
@@ -19,7 +17,9 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
   async onPair(session) {
     this.log(this.homey.__('driver.node_onpair_started'));
     try {
-      session.setHandler('show', async (viewId) => { this.log(this.homey.__('driver.node_pairing_view', { s: viewId })); });
+      session.setHandler('show', async (viewId) => {
+        this.log(this.homey.__('driver.node_pairing_view', { s: viewId }));
+      });
       session.setHandler('list_devices', async (data) => {
         this.log(this.homey.__('driver.node_list_devices'));
         try {
@@ -29,34 +29,36 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
             const clusterDriver = this.homey.drivers.getDriver('proxmox-cluster');
             clusterDevices = clusterDriver.getDevices();
             this.log(this.homey.__('driver.node_found_clusters', { s: clusterDevices.length }));
-          } catch (driverError) { throw new Error('Could not retrieve cluster devices.'); }
-          if (clusterDevices.length === 0) { throw new Error(this.homey.__('error.no_cluster_devices')); }
+          } catch (driverError) {
+            throw new Error('Could not retrieve cluster devices.');
+          }
+          if (clusterDevices.length === 0) {
+            throw new Error(this.homey.__('error.no_cluster_devices'));
+          }
 
           // Step 2: Fetch nodes from ALL clusters in parallel
           this.log(this.homey.__('driver.node_fetching'));
-          const nodeFetchPromises = clusterDevices.map(clusterDevice =>
-            this._fetchNodesForCluster(clusterDevice) // Pass device object
-              .catch(error => {
-                this.error(this.homey.__('driver.node_fetch_failed', { s: clusterDevice.getName(), s2: error.message }));
-                return []; // Return empty list on error for this cluster
-              })
-          );
+          const nodeFetchPromises = clusterDevices.map((clusterDevice) => this._fetchNodesForCluster(clusterDevice) // Pass device object
+            .catch((error) => {
+              this.error(this.homey.__('driver.node_fetch_failed', { s: clusterDevice.getName(), s2: error.message }));
+              return []; // Return empty list on error for this cluster
+            }));
           const resultsPerCluster = await Promise.all(nodeFetchPromises);
 
           // Step 3: Combine and filter nodes
           const allDiscoveredNodes = resultsPerCluster.flat();
           const existingNodeDevices = this.getDevices();
-          const existingNodeIds = existingNodeDevices.map(device => device.getData().id);
-          const nodesToAdd = allDiscoveredNodes.filter(node => !existingNodeIds.includes(node.data.id));
+          const existingNodeIds = existingNodeDevices.map((device) => device.getData().id);
+          const nodesToAdd = allDiscoveredNodes.filter((node) => !existingNodeIds.includes(node.data.id));
           this.log(this.homey.__('driver.node_returning', { s: nodesToAdd.length }));
 
           // Step 4: Return formatted list
-          return nodesToAdd.map(node => {
-            const clusterDevice = clusterDevices.find(cd => cd.getData().id === node.data.serverId);
+          return nodesToAdd.map((node) => {
+            const clusterDevice = clusterDevices.find((cd) => cd.getData().id === node.data.serverId);
             const clusterName = clusterDevice ? clusterDevice.getName() : 'Unknown';
             return {
               ...node,
-              name: `${node.name} (@${clusterName})` // Add cluster name for clarity
+              name: `${node.name} (@${clusterName})`, // Add cluster name for clarity
             };
           });
         } catch (handlerError) {
@@ -67,7 +69,7 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
 
       // Handler after nodes are selected
       session.setHandler('list_all_nodes.done', async (selectedListData) => {
-        this.log(this.homey.__('driver.node_list_done', { s: selectedListData.map(d => d.name) }));
+        this.log(this.homey.__('driver.node_list_done', { s: selectedListData.map((d) => d.name) }));
         return true; // Finalize pairing
       });
 
@@ -91,18 +93,18 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
       const nodesData = await clusterDevice._executeApiCallWithFallback('/api2/json/nodes');
 
       if (Array.isArray(nodesData?.data)) {
-        nodesData.data.forEach(node => {
+        nodesData.data.forEach((node) => {
           if (node.node && node.status === 'online') {
             this.log(this.homey.__('driver.node_mapping', { s: node.node, s2: clusterDeviceName }));
             discoveredNodes.push({
               name: node.node, // Original node name
               data: {
                 id: node.node, // Node name as the unique ID
-                serverId: clusterDeviceId // Link to the cluster device
+                serverId: clusterDeviceId, // Link to the cluster device
               },
               // Define capabilities for the node device being added
               capabilities: ['measure_memory_usage_perc', 'measure_cpu_usage_perc', 'alarm_node_status'],
-              icon: "/assets/nodes.svg",
+              icon: '/assets/nodes.svg',
             });
           } // else { log skipping }
         });
@@ -113,7 +115,6 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
     }
     return discoveredNodes;
   }
-
 
   // === FLOW CARD HANDLERS (Registered on Driver) ===
 
@@ -127,7 +128,9 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
         // Pass action name 'shutdown' using .bind()
         shutdownNodeAction.registerRunListener(this.onFlowActionPower.bind(this, 'shutdown'));
         this.log(this.homey.__('driver.node_shutdown_registered'));
-      } else { this.error(this.homey.__('driver.node_flow_not_found', { s: 'shutdown_node' })); }
+      } else {
+        this.error(this.homey.__('driver.node_flow_not_found', { s: 'shutdown_node' }));
+      }
 
       // Register Stop Node Action
       const stopNodeAction = this.homey.flow.getActionCard('stop_node');
@@ -135,7 +138,31 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
         // Pass action name 'stop' using .bind()
         stopNodeAction.registerRunListener(this.onFlowActionPower.bind(this, 'stop'));
         this.log(this.homey.__('driver.node_stop_registered'));
-      } else { this.error(this.homey.__('driver.node_flow_not_found', { s: 'stop_node' })); }
+      } else {
+        this.error(this.homey.__('driver.node_flow_not_found', { s: 'stop_node' }));
+      }
+
+      // Register Node is Online Condition
+      const nodeOnlineCondition = this.homey.flow.getConditionCard('node_is_online');
+      if (nodeOnlineCondition) {
+        nodeOnlineCondition.registerRunListener(async (args, state) => {
+          const nodeDevice = args.device;
+          if (!nodeDevice) return false;
+
+          // Force real-time check with 3s timeout
+          try {
+            await nodeDevice.updateNodeStatus({ timeout: 3000 });
+          } catch (e) {
+            // Ignore error here, updateNodeStatus handles alarms internally
+          }
+
+          // Returns TRUE if alarm is FALSE (meaning online)
+          return !nodeDevice.getCapabilityValue('alarm_node_status');
+        });
+        this.log(this.homey.__('driver.node_condition_registered'));
+      } else {
+        this.error(this.homey.__('driver.node_flow_not_found', { s: 'node_is_online' }));
+      }
 
     } catch (error) {
       this.error(this.homey.__('driver.node_critical_error_flow'), error);
@@ -166,4 +193,4 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
     }
   }
 
-} // End of class ProxmoxNodeDriver
+}; // End of class ProxmoxNodeDriver

@@ -8,7 +8,7 @@ module.exports = class ProxmoxVeApp extends Homey.App {
   async onInit() {
     const appName = this.manifest?.name?.en || this.manifest?.id || 'ProxmoxVeApp';
     this.log(`${appName} is running...`);
-    
+
     // Initialize app-level settings or configurations if needed
     try {
       // Any app-level initialization can go here
@@ -24,4 +24,4 @@ module.exports = class ProxmoxVeApp extends Homey.App {
     this.log('Proxmox VE app is shutting down...');
   }
 
-} // Einde klasse
+}; // Einde klasse

@@ -34,6 +34,20 @@
   "flow": {
     "conditions": [
       {
+        "id": "node_is_online",
+        "title": {
+          "en": "Node is online",
+          "nl": "Node is online"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          }
+        ]
+      },
+      {
         "id": "vm_is_running",
         "title": {
           "en": "VM/Container is running",
@@ -541,7 +555,7 @@
       "min": 0,
       "max": 100,
       "uiComponent": "sensor",
-      "icon": "assets/memory.svg",
+      "icon": "assets/cpu.svg",
       "insights": true
     },
     "measure_node_count": {

@@ -16,7 +16,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     consecutiveFailures: 0,
     totalCalls: 0,
     totalFailures: 0,
-    averageResponseTime: 0
+    averageResponseTime: 0,
   };
 
   // === LIFECYCLE METHODS ===
@@ -26,13 +26,13 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     try {
       // Clean up any existing cache
       this._cleanupCache();
-      
+
       // Test connection if credentials are provided
       const hostname = this.getSetting('hostname');
       const username = this.getSetting('username');
       const api_token_id = this.getSetting('api_token_id');
       const api_token_secret = this.getSetting('api_token_secret');
-      
+
       if (hostname && username && api_token_id && api_token_secret) {
         this.log('Credentials found, testing connection...');
         const connectionTest = await this.testApiConnection();
@@ -44,19 +44,19 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       } else {
         this.log('No credentials provided, skipping connection test');
       }
-      
+
       await this.updateStatusAndConnection();
       this.startPolling(); // Start polling, it will manage connection state
     } catch (error) {
       this.error(`Initialization Error for [${this.getName()}]:`, error);
       const errorMessage = error.message || 'Initialization failed';
-      await this.setUnavailable(errorMessage).catch(err => this.error('Failed to set unavailable:', err));
-      
+      await this.setUnavailable(errorMessage).catch((err) => this.error('Failed to set unavailable:', err));
+
       // Ensure capabilities reflect failed state on init error
       try {
         await Promise.all([
           this._updateCapability('alarm_connection_fallback', false),
-          this._updateCapability('status_connected_host', this.getSetting('hostname') || 'Unknown')
+          this._updateCapability('status_connected_host', this.getSetting('hostname') || 'Unknown'),
         ]);
       } catch (capError) {
         this.error('Failed to update capabilities during init error:', capError);
@@ -68,52 +68,55 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     this.log(`Device added: ${this.getName()}`);
     // Perform an initial status update shortly after adding
     this._createManagedTimeout(async () => {
-         await this.updateStatusAndConnection().catch(this.error);
+      await this.updateStatusAndConnection().catch(this.error);
     }, 2000);
-   }
+  }
 
   async onSettings({ newSettings, changedKeys }) {
-     this.log(`Settings updated for: ${this.getName()}`);
-     try {
-       let connectionOK = false;
-       // If primary hostname changes, reset fallback state immediately
-       if (changedKeys.includes('hostname')) {
-           this.log('Primary hostname changed, resetting connection state.');
-           // No need to store last_successful_host anymore
-           await this._updateCapability('alarm_connection_fallback', false);
-           await this._updateCapability('status_connected_host', newSettings.hostname);
-           connectionOK = await this.testApiConnection(newSettings); // Test only new primary
-       } else {
-           // For other setting changes, perform a full status update which includes connection check & fallback
-           await this.updateStatusAndConnection();
-           connectionOK = this.getAvailable(); // Check availability after update attempt
-       }
+    this.log(`Settings updated for: ${this.getName()}`);
+    try {
+      let connectionOK = false;
+      // If primary hostname changes, reset fallback state immediately
+      if (changedKeys.includes('hostname')) {
+        this.log('Primary hostname changed, resetting connection state.');
+        // No need to store last_successful_host anymore
+        await this._updateCapability('alarm_connection_fallback', false);
+        await this._updateCapability('status_connected_host', newSettings.hostname);
+        connectionOK = await this.testApiConnection(newSettings); // Test only new primary
+      } else {
+        // For other setting changes, perform a full status update which includes connection check & fallback
+        await this.updateStatusAndConnection();
+        connectionOK = this.getAvailable(); // Check availability after update attempt
+      }
 
-       // Restart polling if interval changed AND connection is currently OK
-       if (connectionOK && changedKeys.includes('poll_interval_cluster')) {
-          this.log('Polling interval changed, restarting polling.');
-          const newIntervalMinutes = parseFloat(newSettings.poll_interval_cluster);
-          this.startPolling(isNaN(newIntervalMinutes) ? null : newIntervalMinutes);
-       } else if (connectionOK) {
-          // Ensure polling is running if connection is OK but interval didn't change
-          this.startPolling();
-       } else {
-          this.stopPolling(); // Stop polling if connection failed
-       }
-     } catch (error) {
-        this.error(`Error processing settings update for [${this.getName()}]:`, error);
-     }
-   }
+      // Restart polling if interval changed AND connection is currently OK
+      if (connectionOK && changedKeys.includes('poll_interval_cluster')) {
+        this.log('Polling interval changed, restarting polling.');
+        const newIntervalMinutes = parseFloat(newSettings.poll_interval_cluster);
+        this.startPolling(isNaN(newIntervalMinutes) ? null : newIntervalMinutes);
+      } else if (connectionOK) {
+        // Ensure polling is running if connection is OK but interval didn't change
+        this.startPolling();
+      } else {
+        this.stopPolling(); // Stop polling if connection failed
+      }
+    } catch (error) {
+      this.error(`Error processing settings update for [${this.getName()}]:`, error);
+    }
+  }
 
-   async onRenamed(name) { this.log(`Device renamed: ${this.getName()} to ${name}`); }
-   async onDeleted() { 
-     this.log(`Device deleted: ${this.getName()}`); 
-     this.stopPolling(); 
-     // Clean up cache, pending requests, and timeouts
-     this.requestCache.clear();
-     this.pendingRequests.clear();
-     this._clearAllTimeouts();
-   }
+  async onRenamed(name) {
+    this.log(`Device renamed: ${this.getName()} to ${name}`);
+  }
+
+  async onDeleted() {
+    this.log(`Device deleted: ${this.getName()}`);
+    this.stopPolling();
+    // Clean up cache, pending requests, and timeouts
+    this.requestCache.clear();
+    this.pendingRequests.clear();
+    this._clearAllTimeouts();
+  }
 
   // === POLLING LOGIC ===
 
@@ -127,22 +130,22 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     }
     const pollIntervalMs = pollIntervalMinutes * 60 * 1000;
     this.log(`Starting cluster status polling every ${pollIntervalMinutes} minutes for [${this.getName()}]`);
-    
+
     // Add jitter to prevent all devices from polling simultaneously
     const jitter = Math.random() * 30000; // 0-30 seconds jitter
     const initialDelay = jitter;
-    
+
     this.updateIntervalId = setInterval(async () => {
       // Polling trigger calls the central update function
-      await this.updateStatusAndConnection().catch(error => {
-          this.error(`Error during scheduled poll check for [${this.getName()}]:`, error);
+      await this.updateStatusAndConnection().catch((error) => {
+        this.error(`Error during scheduled poll check for [${this.getName()}]:`, error);
       });
     }, pollIntervalMs);
-    
+
     // Schedule initial poll with jitter
     this._createManagedTimeout(async () => {
-      await this.updateStatusAndConnection().catch(error => {
-          this.error(`Error during initial poll check for [${this.getName()}]:`, error);
+      await this.updateStatusAndConnection().catch((error) => {
+        this.error(`Error during initial poll check for [${this.getName()}]:`, error);
       });
     }, initialDelay);
   }
@@ -166,7 +169,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
         this.error('Error in managed timeout callback:', error);
       }
     }, delay);
-    
+
     this.activeTimeouts.add(timeoutId);
     return timeoutId;
   }
@@ -208,11 +211,11 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
   _updateConnectionHealth(success, responseTime = 0) {
     this.connectionHealth.totalCalls++;
-    
+
     if (success) {
       this.connectionHealth.lastSuccessfulCall = Date.now();
       this.connectionHealth.consecutiveFailures = 0;
-      
+
       // Update average response time
       const totalTime = this.connectionHealth.averageResponseTime * (this.connectionHealth.totalCalls - this.connectionHealth.totalFailures - 1);
       this.connectionHealth.averageResponseTime = (totalTime + responseTime) / (this.connectionHealth.totalCalls - this.connectionHealth.totalFailures);
@@ -220,25 +223,25 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       this.connectionHealth.totalFailures++;
       this.connectionHealth.consecutiveFailures++;
     }
-    
+
     // Connection health tracking (debug disabled in production)
   }
 
   _getConnectionHealthStatus() {
     const now = Date.now();
-    const timeSinceLastSuccess = this.connectionHealth.lastSuccessfulCall ? 
-      (now - this.connectionHealth.lastSuccessfulCall) : null;
-    
-    const failureRate = this.connectionHealth.totalCalls > 0 ? 
-      (this.connectionHealth.totalFailures / this.connectionHealth.totalCalls) * 100 : 0;
-    
+    const timeSinceLastSuccess = this.connectionHealth.lastSuccessfulCall
+      ? (now - this.connectionHealth.lastSuccessfulCall) : null;
+
+    const failureRate = this.connectionHealth.totalCalls > 0
+      ? (this.connectionHealth.totalFailures / this.connectionHealth.totalCalls) * 100 : 0;
+
     return {
       isHealthy: this.connectionHealth.consecutiveFailures < 3 && failureRate < 50,
       timeSinceLastSuccess,
       consecutiveFailures: this.connectionHealth.consecutiveFailures,
       failureRate: Math.round(failureRate * 100) / 100,
       averageResponseTime: Math.round(this.connectionHealth.averageResponseTime),
-      totalCalls: this.connectionHealth.totalCalls
+      totalCalls: this.connectionHealth.totalCalls,
     };
   }
 
@@ -273,8 +276,8 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
   _setCachedResponse(cacheKey, data) {
     this.requestCache.set(cacheKey, {
-      data: data,
-      timestamp: Date.now()
+      data,
+      timestamp: Date.now(),
     });
   }
 
@@ -291,111 +294,113 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
   _validateApiCredentials(credentials) {
     if (!credentials) {
-      throw new Error(JSON.stringify({ 
-        en: 'API credentials are required.', 
-        nl: 'API gegevens zijn vereist.' 
+      throw new Error(JSON.stringify({
+        en: 'API credentials are required.',
+        nl: 'API gegevens zijn vereist.',
       }));
     }
-    
-    const { hostname, username, tokenId, tokenSecret } = credentials;
-    
+
+    const {
+      hostname, username, tokenId, tokenSecret,
+    } = credentials;
+
     // Validate hostname
     if (!hostname || typeof hostname !== 'string' || hostname.trim().length === 0) {
-      throw new Error(JSON.stringify({ 
-        en: 'Valid hostname is required.', 
-        nl: 'Geldige hostnaam is vereist.' 
+      throw new Error(JSON.stringify({
+        en: 'Valid hostname is required.',
+        nl: 'Geldige hostnaam is vereist.',
       }));
     }
-    
+
     // Enhanced hostname validation (IP or domain)
     const hostnameRegex = /^[a-zA-Z0-9.-]+$/;
     if (!hostnameRegex.test(hostname.trim())) {
-      throw new Error(JSON.stringify({ 
-        en: 'Invalid hostname format.', 
-        nl: 'Ongeldig hostnaam formaat.' 
+      throw new Error(JSON.stringify({
+        en: 'Invalid hostname format.',
+        nl: 'Ongeldig hostnaam formaat.',
       }));
     }
-    
+
     // Additional security checks
     if (hostname.includes('..') || hostname.startsWith('.') || hostname.endsWith('.')) {
-      throw new Error(JSON.stringify({ 
-        en: 'Invalid hostname format - contains invalid characters.', 
-        nl: 'Ongeldig hostnaam formaat - bevat ongeldige karakters.' 
+      throw new Error(JSON.stringify({
+        en: 'Invalid hostname format - contains invalid characters.',
+        nl: 'Ongeldig hostnaam formaat - bevat ongeldige karakters.',
       }));
     }
-    
+
     // Validate username
     if (!username || typeof username !== 'string' || username.trim().length === 0) {
-      throw new Error(JSON.stringify({ 
-        en: 'Valid username is required.', 
-        nl: 'Geldige gebruikersnaam is vereist.' 
+      throw new Error(JSON.stringify({
+        en: 'Valid username is required.',
+        nl: 'Geldige gebruikersnaam is vereist.',
       }));
     }
-    
+
     // Validate token ID
     if (!tokenId || typeof tokenId !== 'string' || tokenId.trim().length === 0) {
-      throw new Error(JSON.stringify({ 
-        en: 'Valid API token ID is required.', 
-        nl: 'Geldige API token ID is vereist.' 
+      throw new Error(JSON.stringify({
+        en: 'Valid API token ID is required.',
+        nl: 'Geldige API token ID is vereist.',
       }));
     }
-    
+
     // Validate token secret
     if (!tokenSecret || typeof tokenSecret !== 'string' || tokenSecret.trim().length === 0) {
-      throw new Error(JSON.stringify({ 
-        en: 'Valid API token secret is required.', 
-        nl: 'Geldige API token secret is vereist.' 
+      throw new Error(JSON.stringify({
+        en: 'Valid API token secret is required.',
+        nl: 'Geldige API token secret is vereist.',
       }));
     }
-    
+
     return true;
   }
 
   _validateVmParameters(vmId, vmType) {
     // Validate VM ID
     if (!vmId || (typeof vmId !== 'number' && typeof vmId !== 'string')) {
-      throw new Error(JSON.stringify({ 
-        en: 'Valid VM/Container ID is required.', 
-        nl: 'Geldige VM/Container ID is vereist.' 
+      throw new Error(JSON.stringify({
+        en: 'Valid VM/Container ID is required.',
+        nl: 'Geldige VM/Container ID is vereist.',
       }));
     }
-    
+
     const numericId = parseInt(vmId, 10);
     if (isNaN(numericId) || numericId < 100 || numericId > 999999999) {
-      throw new Error(JSON.stringify({ 
-        en: 'VM/Container ID must be a number between 100 and 999999999.', 
-        nl: 'VM/Container ID moet een nummer zijn tussen 100 en 999999999.' 
+      throw new Error(JSON.stringify({
+        en: 'VM/Container ID must be a number between 100 and 999999999.',
+        nl: 'VM/Container ID moet een nummer zijn tussen 100 en 999999999.',
       }));
     }
-    
+
     // Validate VM type
     if (!vmType || (vmType !== 'qemu' && vmType !== 'lxc')) {
-      throw new Error(JSON.stringify({ 
-        en: 'VM type must be either "qemu" or "lxc".', 
-        nl: 'VM type moet "qemu" of "lxc" zijn.' 
+      throw new Error(JSON.stringify({
+        en: 'VM type must be either "qemu" or "lxc".',
+        nl: 'VM type moet "qemu" of "lxc" zijn.',
       }));
     }
-    
+
     return { vmId: numericId, vmType };
   }
 
   _validateNodeName(nodeName) {
     if (!nodeName || typeof nodeName !== 'string' || nodeName.trim().length === 0) {
-      throw new Error(JSON.stringify({ 
-        en: 'Valid node name is required.', 
-        nl: 'Geldige node naam is vereist.' 
+      throw new Error(JSON.stringify({
+        en: 'Valid node name is required.',
+        nl: 'Geldige node naam is vereist.',
       }));
     }
-    
+
     // Basic node name validation
     const nodeNameRegex = /^[a-zA-Z0-9.-]+$/;
     if (!nodeNameRegex.test(nodeName.trim())) {
-      throw new Error(JSON.stringify({ 
-        en: 'Invalid node name format.', 
-        nl: 'Ongeldig node naam formaat.' 
+      throw new Error(JSON.stringify({
+        en: 'Invalid node name format.',
+        nl: 'Ongeldig node naam formaat.',
       }));
     }
-    
+
     return nodeName.trim();
   }
 
@@ -406,41 +411,43 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     const username = this.getSetting('username');
     const tokenId = this.getSetting('api_token_id');
     const tokenSecret = this.getSetting('api_token_secret');
-    
-    const credentials = { hostname, username, tokenId, tokenSecret, deviceName: this.getName() };
+
+    const credentials = {
+      hostname, username, tokenId, tokenSecret, deviceName: this.getName(),
+    };
     this._validateApiCredentials(credentials);
-    
+
     return credentials;
   }
 
   _getFetchOptions(credentials, hostToUse, method = 'GET', timeout = 15000) {
     if (!credentials) throw new Error('Credentials object missing for fetch options.');
     const authorizationHeader = `PVEAPIToken=${credentials.username}!${credentials.tokenId}=${credentials.tokenSecret}`;
-    
+
     // Check if user has opted to allow self-signed certificates
     const allowSelfSigned = this.getSetting('allow_self_signed_certs') || false;
-    
+
     // Create HTTPS agent with configurable SSL validation
-    const httpsAgent = new https.Agent({ 
+    const httpsAgent = new https.Agent({
       rejectUnauthorized: !allowSelfSigned, // Respect user setting for SSL validation
-      timeout: timeout,
+      timeout,
       keepAlive: true,
-      maxSockets: 5
+      maxSockets: 5,
     });
-    
+
     if (allowSelfSigned) {
       this.log('⚠️ SSL certificate validation is DISABLED. This is a security risk!');
     }
-    
+
     return {
-        method: method,
-        headers: { 
-          'Authorization': authorizationHeader, 
-          'Accept': 'application/json',
-          'User-Agent': 'Homey-ProxmoxVE/1.0'
-        },
-        agent: httpsAgent,
-        timeout: timeout
+      method,
+      headers: {
+        Authorization: authorizationHeader,
+        Accept: 'application/json',
+        'User-Agent': 'Homey-ProxmoxVE/1.0',
+      },
+      agent: httpsAgent,
+      timeout,
     };
   }
 
@@ -448,10 +455,11 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   async _doApiCall(hostToTry, urlPath, options = {}) {
     const startTime = Date.now();
     let initialCredentials;
-    try { initialCredentials = this._getApiCredentials(); }
-    catch (error) { 
+    try {
+      initialCredentials = this._getApiCredentials();
+    } catch (error) {
       this._updateConnectionHealth(false);
-      throw error; 
+      throw error;
     }
 
     const url = `https://${hostToTry}:8006${urlPath}`;
@@ -461,38 +469,46 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       throw new Error('Could not create fetch options.');
     }
 
-    const fetchOptions = { ...fetchOptionsConfig, ...options, headers: {...fetchOptionsConfig.headers, ...options.headers} };
+    const fetchOptions = { ...fetchOptionsConfig, ...options, headers: { ...fetchOptionsConfig.headers, ...options.headers } };
     fetchOptions.method = options.method || fetchOptionsConfig.method;
     if (fetchOptions.method === 'POST' && options.body) {
-        fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        fetchOptions.body = options.body;
-     } else { delete fetchOptions.body; }
+      fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      fetchOptions.body = options.body;
+    } else {
+      delete fetchOptions.body;
+    }
 
     // API call logging disabled in production
-    
+
     try {
       const response = await fetch(url, fetchOptions); // Throws on network error
       const responseTime = Date.now() - startTime;
 
       if (!response.ok) {
-        let errorBody = `(Status: ${response.status} ${response.statusText})`; 
-        try { errorBody = await response.text(); } catch(e) {}
+        let errorBody = `(Status: ${response.status} ${response.statusText})`;
+        try {
+          errorBody = await response.text();
+        } catch (e) {}
         this._logError(`API Error via ${hostToTry}: ${response.status}. Body: ${errorBody.substring(0, 200)}`);
-        
+
         // Update health tracking
         this._updateConnectionHealth(false, responseTime);
-        
+
         // Throw specific error for API issues, include status
         const apiError = new Error(JSON.stringify({ en: `API Error: ${response.status}`, nl: `API Fout: ${response.status}` }));
         apiError.statusCode = response.status;
         throw apiError;
       }
-      
+
       // API call successful
       this._updateConnectionHealth(true, responseTime);
-      
+
       const text = await response.text();
-      try { return JSON.parse(text); } catch(e) { return text || null; }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        return text || null;
+      }
     } catch (error) {
       const responseTime = Date.now() - startTime;
       this._updateConnectionHealth(false, responseTime);
@@ -502,183 +518,186 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
   // Executes an API call, trying primary host first, then fallbacks if necessary
   async _executeApiCallWithFallback(urlPath, options = {}) {
-      // Check cache first for GET requests
+    // Check cache first for GET requests
+    if ((options.method || 'GET') === 'GET') {
+      const cacheKey = this._getCacheKey(urlPath, options);
+      const cachedResponse = this._getCachedResponse(cacheKey);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+    }
+
+    // Check for pending request to avoid duplicates
+    const requestKey = this._getCacheKey(urlPath, options);
+    if (this.pendingRequests.has(requestKey)) {
+      this.log(`Request deduplication: waiting for pending request ${requestKey}`);
+      return this.pendingRequests.get(requestKey);
+    }
+
+    // Create promise for this request
+    const requestPromise = this._executeApiCallWithFallbackInternal(urlPath, options);
+    this.pendingRequests.set(requestKey, requestPromise);
+
+    try {
+      const result = await requestPromise;
+
+      // Cache successful GET responses
       if ((options.method || 'GET') === 'GET') {
-        const cacheKey = this._getCacheKey(urlPath, options);
-        const cachedResponse = this._getCachedResponse(cacheKey);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
+        this._setCachedResponse(requestKey, result);
       }
 
-      // Check for pending request to avoid duplicates
-      const requestKey = this._getCacheKey(urlPath, options);
-      if (this.pendingRequests.has(requestKey)) {
-        this.log(`Request deduplication: waiting for pending request ${requestKey}`);
-        return this.pendingRequests.get(requestKey);
-      }
-
-      // Create promise for this request
-      const requestPromise = this._executeApiCallWithFallbackInternal(urlPath, options);
-      this.pendingRequests.set(requestKey, requestPromise);
-
-      try {
-        const result = await requestPromise;
-        
-        // Cache successful GET responses
-        if ((options.method || 'GET') === 'GET') {
-          this._setCachedResponse(requestKey, result);
-        }
-        
-        return result;
-      } finally {
-        // Always clean up pending request
-        this.pendingRequests.delete(requestKey);
-      }
+      return result;
+    } finally {
+      // Always clean up pending request
+      this.pendingRequests.delete(requestKey);
+    }
   }
 
   // Internal method that does the actual API call work
   async _executeApiCallWithFallbackInternal(urlPath, options = {}) {
-      let credentials;
-      try { credentials = this._getApiCredentials(); }
-      catch (error) { await this.setUnavailable({ en: error.message, nl: error.message }); throw error; }
+    let credentials;
+    try {
+      credentials = this._getApiCredentials();
+    } catch (error) {
+      await this.setUnavailable({ en: error.message, nl: error.message }); throw error;
+    }
 
-      const primaryHost = credentials.hostname;
-      let lastError = null;
+    const primaryHost = credentials.hostname;
+    let lastError = null;
 
-      // 1. Try Primary Host
-      this.log(`Attempting API call via PRIMARY host: ${primaryHost}`);
+    // 1. Try Primary Host
+    this.log(`Attempting API call via PRIMARY host: ${primaryHost}`);
+    try {
+      const result = await this._doApiCall(primaryHost, urlPath, options);
+      // Success on primary
+      await this._updateCapability('alarm_connection_fallback', false);
+      await this._updateCapability('status_connected_host', primaryHost);
+      if (!this.getAvailable()) await this.setAvailable();
+      return result; // Return successful result
+    } catch (error) {
+      this.error(`Primary host attempt failed for ${urlPath}: ${error.message}`);
+      lastError = error;
+      const isNetworkError = error.code || error.type === 'request-timeout' || !(error.message.startsWith('API Error:'));
+      if (!isNetworkError) {
+        // If it's an API error (like 401), don't try fallbacks. Mark unavailable.
+        this.log('API error on primary host, not attempting fallbacks.');
+        await this.setUnavailable({ en: `API error on primary host: ${error.message}`, nl: `API fout op primaire host: ${error.message}` }).catch(this.error);
+        await this._updateCapability('alarm_connection_fallback', false);
+        await this._updateCapability('status_connected_host', primaryHost);
+        throw error; // Re-throw API error
+      }
+      this.log('Primary host failed with network error, attempting fallbacks...');
+    }
+
+    // 2. Try Fallback IPs
+    const onlineNodeIps = await this.getStoreValue('online_node_ips') || [];
+    const fallbacksToTry = onlineNodeIps.filter((ip) => ip !== primaryHost); // Exclude primary
+
+    if (fallbacksToTry.length === 0) {
+      this.log('No fallback IPs available.');
+      const finalErrorMsg = { en: `Primary connection failed and no fallbacks available. Last error: ${lastError?.message}`, nl: `Primaire verbinding mislukt en geen fallbacks beschikbaar. Laatste fout: ${lastError?.message}` };
+      await this.setUnavailable(finalErrorMsg).catch(this.error);
+      await this._updateCapability('alarm_connection_fallback', false);
+      await this._updateCapability('status_connected_host', primaryHost);
+      throw lastError || new Error(JSON.stringify(finalErrorMsg));
+    }
+
+    for (const fallbackIp of fallbacksToTry) {
+      this.log(`Attempting API call via FALLBACK IP: ${fallbackIp}`);
       try {
-          const result = await this._doApiCall(primaryHost, urlPath, options);
-          // Success on primary
-          await this._updateCapability('alarm_connection_fallback', false);
-          await this._updateCapability('status_connected_host', primaryHost);
-          if (!this.getAvailable()) await this.setAvailable();
-          return result; // Return successful result
+        const result = await this._doApiCall(fallbackIp, urlPath, options);
+        // Success on fallback
+        await this._updateCapability('alarm_connection_fallback', true);
+        await this._updateCapability('status_connected_host', fallbackIp);
+        if (!this.getAvailable()) await this.setAvailable();
+        return result; // Return successful result from fallback
       } catch (error) {
-          this.error(`Primary host attempt failed for ${urlPath}: ${error.message}`);
-          lastError = error;
-          const isNetworkError = error.code || error.type === 'request-timeout' || !(error.message.startsWith('API Error:'));
-          if (!isNetworkError) {
-              // If it's an API error (like 401), don't try fallbacks. Mark unavailable.
-              this.log('API error on primary host, not attempting fallbacks.');
-              await this.setUnavailable({ en: `API error on primary host: ${error.message}`, nl: `API fout op primaire host: ${error.message}` }).catch(this.error);
-              await this._updateCapability('alarm_connection_fallback', false);
-              await this._updateCapability('status_connected_host', primaryHost);
-              throw error; // Re-throw API error
-          }
-          this.log('Primary host failed with network error, attempting fallbacks...');
+        this.error(`Fallback attempt via ${fallbackIp} failed: ${error.message}`);
+        lastError = error;
+        const isNetworkError = error.code || error.type === 'request-timeout' || !(error.message.startsWith('API Error:'));
+        if (!isNetworkError) {
+          this.log('API error on fallback host, stopping fallback attempts.');
+          break; // Stop trying fallbacks on API error
+        }
+        // Continue to next fallback IP if network error
       }
+    }
 
-      // 2. Try Fallback IPs
-      const onlineNodeIps = await this.getStoreValue('online_node_ips') || [];
-      const fallbacksToTry = onlineNodeIps.filter(ip => ip !== primaryHost); // Exclude primary
-
-      if (fallbacksToTry.length === 0) {
-          this.log('No fallback IPs available.');
-          const finalErrorMsg = { en: `Primary connection failed and no fallbacks available. Last error: ${lastError?.message}`, nl: `Primaire verbinding mislukt en geen fallbacks beschikbaar. Laatste fout: ${lastError?.message}` };
-          await this.setUnavailable(finalErrorMsg).catch(this.error);
-          await this._updateCapability('alarm_connection_fallback', false);
-          await this._updateCapability('status_connected_host', primaryHost);
-          throw lastError || new Error(JSON.stringify(finalErrorMsg));
-      }
-
-      for (const fallbackIp of fallbacksToTry) {
-          this.log(`Attempting API call via FALLBACK IP: ${fallbackIp}`);
-          try {
-              const result = await this._doApiCall(fallbackIp, urlPath, options);
-              // Success on fallback
-              await this._updateCapability('alarm_connection_fallback', true);
-              await this._updateCapability('status_connected_host', fallbackIp);
-              if (!this.getAvailable()) await this.setAvailable();
-              return result; // Return successful result from fallback
-          } catch (error) {
-              this.error(`Fallback attempt via ${fallbackIp} failed: ${error.message}`);
-              lastError = error;
-              const isNetworkError = error.code || error.type === 'request-timeout' || !(error.message.startsWith('API Error:'));
-              if (!isNetworkError) {
-                  this.log('API error on fallback host, stopping fallback attempts.');
-                  break; // Stop trying fallbacks on API error
-              }
-              // Continue to next fallback IP if network error
-          }
-      }
-
-      // If loop finishes without success
-      this.log(`All fallback attempts failed. Last error: ${lastError?.message}`);
-      const finalErrorMsgAll = { en: `All connection attempts failed. Last error: ${lastError?.message}`, nl: `Alle verbindingspogingen mislukt. Laatste fout: ${lastError?.message}` };
-      await this.setUnavailable(finalErrorMsgAll).catch(this.error);
-      await this._updateCapability('alarm_connection_fallback', false); // Reset fallback status
-      await this._updateCapability('status_connected_host', primaryHost); // Show primary host
-      throw lastError || new Error(JSON.stringify(finalErrorMsgAll));
+    // If loop finishes without success
+    this.log(`All fallback attempts failed. Last error: ${lastError?.message}`);
+    const finalErrorMsgAll = { en: `All connection attempts failed. Last error: ${lastError?.message}`, nl: `Alle verbindingspogingen mislukt. Laatste fout: ${lastError?.message}` };
+    await this.setUnavailable(finalErrorMsgAll).catch(this.error);
+    await this._updateCapability('alarm_connection_fallback', false); // Reset fallback status
+    await this._updateCapability('status_connected_host', primaryHost); // Show primary host
+    throw lastError || new Error(JSON.stringify(finalErrorMsgAll));
   }
 
   // Helper to update capability value on THIS device instance
   async _updateCapability(capabilityId, value) {
-     try {
-         const forceUpdate = ['alarm_connection_fallback', 'status_connected_host'].includes(capabilityId);
-         if (!this.hasCapability(capabilityId)) {
-             this.log(`Adding capability '${capabilityId}' to [${this.getName()}]`);
-             await this.addCapability(capabilityId);
-             await this.setCapabilityValue(capabilityId, value);
-             this.log(`Capability '${capabilityId}' initialized to ${value} for [${this.getName()}]`);
-         } else if (forceUpdate || this.getCapabilityValue(capabilityId) !== value) {
-              await this.setCapabilityValue(capabilityId, value);
-              this.log(`Capability '${capabilityId}' updated to ${value} for [${this.getName()}]` + (forceUpdate ? ' (forced)' : ''));
-         }
-     } catch (error) { 
-       this.error(`Error setting capability '${capabilityId}':`, error); 
-       // Don't throw here to prevent cascading failures
-     }
+    try {
+      const forceUpdate = ['alarm_connection_fallback', 'status_connected_host'].includes(capabilityId);
+      if (!this.hasCapability(capabilityId)) {
+        this.log(`Adding capability '${capabilityId}' to [${this.getName()}]`);
+        await this.addCapability(capabilityId);
+        await this.setCapabilityValue(capabilityId, value);
+        this.log(`Capability '${capabilityId}' initialized to ${value} for [${this.getName()}]`);
+      } else if (forceUpdate || this.getCapabilityValue(capabilityId) !== value) {
+        await this.setCapabilityValue(capabilityId, value);
+        this.log(`Capability '${capabilityId}' updated to ${value} for [${this.getName()}]${forceUpdate ? ' (forced)' : ''}`);
+      }
+    } catch (error) {
+      this.error(`Error setting capability '${capabilityId}':`, error);
+      // Don't throw here to prevent cascading failures
+    }
   }
 
   // Enhanced error handling with proper state management
   async _handleApiError(error, context = '') {
     const deviceName = this.getName();
     this.error(`API Error ${context} for [${deviceName}]:`, error.message);
-    
+
     // Determine if this is a connection issue or API issue
-    const isConnectionError = error.code === 'ECONNREFUSED' || 
-                             error.code === 'ENOTFOUND' || 
-                             error.code === 'ETIMEDOUT' ||
-                             error.type === 'request-timeout';
-    
+    const isConnectionError = error.code === 'ECONNREFUSED'
+                             || error.code === 'ENOTFOUND'
+                             || error.code === 'ETIMEDOUT'
+                             || error.type === 'request-timeout';
+
     const isApiError = error.statusCode && error.statusCode >= 400;
-    
+
     if (isConnectionError) {
       // Connection issues - set unavailable but don't clear fallback status
       await this.setUnavailable({
         en: `Connection failed: ${error.message}`,
-        nl: `Verbinding mislukt: ${error.message}`
+        nl: `Verbinding mislukt: ${error.message}`,
       }).catch(this.error);
     } else if (isApiError) {
       // API errors - set unavailable and clear fallback
       await this.setUnavailable({
         en: `API Error ${error.statusCode}: ${error.message}`,
-        nl: `API Fout ${error.statusCode}: ${error.message}`
+        nl: `API Fout ${error.statusCode}: ${error.message}`,
       }).catch(this.error);
       await this._updateCapability('alarm_connection_fallback', false);
     }
-    
+
     return { isConnectionError, isApiError };
   }
 
   // Helper function to find the current node NAME for a given VM/LXC
   async _findTargetNode(vmType, vmId) {
-      this.log(`Finding current node NAME for ${vmType}/${vmId} via [${this.getName()}]...`);
-      try {
-          // Use fallback-aware call
-          const resourcesData = await this._executeApiCallWithFallback('/api2/json/cluster/resources');
-          if (Array.isArray(resourcesData?.data)) {
-              const resource = resourcesData.data.find(r => r.vmid === vmId && r.type === vmType);
-              if (resource?.node) return resource.node;
-           }
-          throw new Error(`Resource ${vmType}/${vmId} not found in cluster resources.`);
-      } catch (error) {
-          this.error(`Could not find node for ${vmType}/${vmId}:`, error.message);
-          // Re-throw a more specific error using inline translation
-          throw new Error(JSON.stringify({ en: `Could not find node for ${vmType}/${vmId}.`, nl: `Kon node niet vinden voor ${vmType}/${vmId}.` }));
+    this.log(`Finding current node NAME for ${vmType}/${vmId} via [${this.getName()}]...`);
+    try {
+      // Use fallback-aware call
+      const resourcesData = await this._executeApiCallWithFallback('/api2/json/cluster/resources');
+      if (Array.isArray(resourcesData?.data)) {
+        const resource = resourcesData.data.find((r) => r.vmid === vmId && r.type === vmType);
+        if (resource?.node) return resource.node;
       }
+      throw new Error(`Resource ${vmType}/${vmId} not found in cluster resources.`);
+    } catch (error) {
+      this.error(`Could not find node for ${vmType}/${vmId}:`, error.message);
+      // Re-throw a more specific error using inline translation
+      throw new Error(JSON.stringify({ en: `Could not find node for ${vmType}/${vmId}.`, nl: `Kon node niet vinden voor ${vmType}/${vmId}.` }));
+    }
   }
 
   // === DEVICE SPECIFIC METHODS ===
@@ -689,31 +708,33 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     this.log(`Testing PRIMARY API connection for [${deviceName}]...`);
     let tempCredentials;
     try {
-        tempCredentials = settings
-            ? { hostname: settings.hostname, username: settings.username, tokenId: settings.api_token_id, tokenSecret: settings.api_token_secret }
-            : this._getApiCredentials(); // Can throw if incomplete
-        if (!tempCredentials || !tempCredentials.hostname /*... etc */) {
-            throw new Error(JSON.stringify({ en: 'Settings incomplete.', nl: 'Instellingen incompleet.' }));
+      tempCredentials = settings
+        ? {
+          hostname: settings.hostname, username: settings.username, tokenId: settings.api_token_id, tokenSecret: settings.api_token_secret,
         }
+        : this._getApiCredentials(); // Can throw if incomplete
+      if (!tempCredentials || !tempCredentials.hostname /* ... etc */) {
+        throw new Error(JSON.stringify({ en: 'Settings incomplete.', nl: 'Instellingen incompleet.' }));
+      }
     } catch (error) {
-         this.log(`[Warning] API Test Failed for [${deviceName}]: ${error.message}`);
-         await this.setUnavailable({ en: error.message, nl: error.message }).catch(this.error);
-         await this._updateCapability('alarm_connection_fallback', false);
-         await this._updateCapability('status_connected_host', this.getSetting('hostname') || 'Unknown');
-         return false;
+      this.log(`[Warning] API Test Failed for [${deviceName}]: ${error.message}`);
+      await this.setUnavailable({ en: error.message, nl: error.message }).catch(this.error);
+      await this._updateCapability('alarm_connection_fallback', false);
+      await this._updateCapability('status_connected_host', this.getSetting('hostname') || 'Unknown');
+      return false;
     }
 
     const hostToTest = tempCredentials.hostname;
 
     try {
-        // Use the simple _doApiCall to test ONLY this specific host
-        const data = await this._doApiCall(hostToTest, '/api2/json/version', { method: 'GET', timeout: 10000 });
-        this.log(`Primary API Connection OK for [${deviceName}] via ${hostToTest}. Version: ${data?.data?.version}`);
-        // Don't set available or update caps here, let updateStatusAndConnection handle it
-        return true;
+      // Use the simple _doApiCall to test ONLY this specific host
+      const data = await this._doApiCall(hostToTest, '/api2/json/version', { method: 'GET', timeout: 10000 });
+      this.log(`Primary API Connection OK for [${deviceName}] via ${hostToTest}. Version: ${data?.data?.version}`);
+      // Don't set available or update caps here, let updateStatusAndConnection handle it
+      return true;
     } catch (error) {
-        this.error(`Primary API Connection Test Failed for [${deviceName}] via ${hostToTest}: ${error.message}`);
-        return false; // Indicate failure
+      this.error(`Primary API Connection Test Failed for [${deviceName}] via ${hostToTest}: ${error.message}`);
+      return false; // Indicate failure
     }
   }
 
@@ -724,7 +745,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     try {
       // If new settings are provided, test the primary connection with them first
       if (newSettings) {
-          await this.testApiConnection(newSettings);
+        await this.testApiConnection(newSettings);
       }
 
       // Always attempt to fetch cluster status using the fallback-aware helper
@@ -733,7 +754,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       let nodeCount = 0;
       const onlineNodeIps = [];
       if (Array.isArray(clusterStatusData?.data)) {
-        clusterStatusData.data.forEach(item => {
+        clusterStatusData.data.forEach((item) => {
           if (item.type === 'node' && item.online === 1) {
             nodeCount++;
             if (item.ip) onlineNodeIps.push(item.ip);
@@ -745,13 +766,14 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
       // Fetch resources separately for VM/LXC counts using the fallback-aware helper
       const resourcesData = await this._executeApiCallWithFallback('/api2/json/cluster/resources');
-      let activeVmCount = 0, activeLxcCount = 0;
-       if (Array.isArray(resourcesData?.data)) {
-          resourcesData.data.forEach(r => {
-              if (r.type === 'qemu' && r.status === 'running') activeVmCount++;
-              else if (r.type === 'lxc' && r.status === 'running') activeLxcCount++;
-          });
-       }
+      let activeVmCount = 0; let
+        activeLxcCount = 0;
+      if (Array.isArray(resourcesData?.data)) {
+        resourcesData.data.forEach((r) => {
+          if (r.type === 'qemu' && r.status === 'running') activeVmCount++;
+          else if (r.type === 'lxc' && r.status === 'running') activeLxcCount++;
+        });
+      }
 
       await this._updateCapability('measure_node_count', nodeCount);
       await this._updateCapability('measure_vm_count', activeVmCount);
@@ -764,7 +786,6 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     }
     return this.getAvailable(); // Return current availability status
   }
-
 
   // === FLOW CARD HANDLERS ===
   // These are now registered and handled by the Driver in driver.js
@@ -780,16 +801,18 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       const resourcesData = await this._executeApiCallWithFallback('/api2/json/cluster/resources');
       if (Array.isArray(resourcesData?.data)) {
         resourcesData.data
-          .filter(r => (r.type === 'qemu' || r.type === 'lxc') && (query === '' || r.name?.toLowerCase().includes(query.toLowerCase()) || r.vmid?.toString().includes(query)))
-          .forEach(r => {
+          .filter((r) => (r.type === 'qemu' || r.type === 'lxc') && (query === '' || r.name?.toLowerCase().includes(query.toLowerCase()) || r.vmid?.toString().includes(query)))
+          .forEach((r) => {
             const resourceName = r.name || `Unnamed ${r.type}`;
             results.push({
               name: `${resourceName} (${r.type} ${r.vmid})`,
-              id: { vmid: r.vmid, type: r.type, name: resourceName } // Store vmid, type, and name
+              id: { vmid: r.vmid, type: r.type, name: resourceName }, // Store vmid, type, and name
             });
           });
       }
-    } catch (error) { this.error(`Autocomplete API error for [${deviceName}]:`, error.message); }
+    } catch (error) {
+      this.error(`Autocomplete API error for [${deviceName}]:`, error.message);
+    }
     this.log(`Returning ${results.length} autocomplete results for [${deviceName}].`);
     return results;
   }
@@ -811,10 +834,12 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       const targetNode = await this._findTargetNode(validatedParams.vmType, validatedParams.vmId);
       const apiPath = `/api2/json/nodes/${targetNode}/${validatedParams.vmType}/${validatedParams.vmId}/status/${action}`;
       const options = {
-          method: 'POST',
-          timeout: (action === 'shutdown' ? 30000 : 15000)
+        method: 'POST',
+        timeout: (action === 'shutdown' ? 30000 : 15000),
       };
-      if (action === 'stop') { options.body = 'overrule-shutdown=1'; }
+      if (action === 'stop') {
+        options.body = 'overrule-shutdown=1';
+      }
 
       this.log(`Attempting ${options.method} to ${apiPath} via [${deviceName}]`);
       // Use fallback-aware call for the action itself
@@ -857,4 +882,4 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     }
   }
 
-} // End of class ProxmoxClusterDevice
+}; // End of class ProxmoxClusterDevice

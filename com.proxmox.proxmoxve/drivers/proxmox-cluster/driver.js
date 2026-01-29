@@ -13,7 +13,6 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     this.log(this.homey.__('driver.cluster_driver_initialized'));
   }
 
-
   // Custom pairing logic according to SDK v3
   async onPair(session) {
     this.log(this.homey.__('driver.onpair_started'));
@@ -25,15 +24,17 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     await session.showView('connection_setup');
 
     // Handle connection setup and testing - according to SDK documentation
-    session.setHandler('connection_setup', async function (data) {
+    session.setHandler('connection_setup', async (data) => {
 
-      const { hostname, username, api_token_id, api_token_secret, allow_self_signed_certs } = data;
+      const {
+        hostname, username, api_token_id, api_token_secret, allow_self_signed_certs,
+      } = data;
 
       // Validate input
       if (!hostname || !username || !api_token_id || !api_token_secret) {
         return {
           success: false,
-          error: 'All fields are required'
+          error: 'All fields are required',
         };
       }
 
@@ -44,11 +45,11 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
           username,
           api_token_id,
           api_token_secret,
-          allow_self_signed_certs: allow_self_signed_certs || false
+          allow_self_signed_certs: allow_self_signed_certs || false,
         });
 
         if (testResult.success) {
-          const nodeNames = testResult.clusterInfo.nodes.map(node => node.name).join(', ');
+          const nodeNames = testResult.clusterInfo.nodes.map((node) => node.name).join(', ');
 
           // Store cluster info in session for later retrieval
           this.clusterInfo = testResult.clusterInfo;
@@ -56,30 +57,29 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
           return {
             success: true,
             clusterInfo: testResult.clusterInfo,
-            message: `Connection successful! Found ${testResult.clusterInfo.nodes.length} nodes in cluster: ${nodeNames}`
-          };
-        } else {
-          return {
-            success: false,
-            error: testResult.error
+            message: `Connection successful! Found ${testResult.clusterInfo.nodes.length} nodes in cluster: ${nodeNames}`,
           };
         }
+        return {
+          success: false,
+          error: testResult.error,
+        };
+
       } catch (error) {
         this.error(this.homey.__('driver.connection_test_exception'), error.message);
         return {
           success: false,
-          error: error.message || this.homey.__('error.connection_test_failed')
+          error: error.message || this.homey.__('error.connection_test_failed'),
         };
       }
-    }.bind(this));
+    });
 
     // Handle cluster info retrieval
-    session.setHandler('get_cluster_info', async function () {
+    session.setHandler('get_cluster_info', async () => {
       return this.clusterInfo || null;
-    }.bind(this));
+    });
 
   }
-
 
   // Test Proxmox connection during pairing
   async testProxmoxConnection(credentials) {
@@ -90,7 +90,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       // Create HTTPS agent
       const httpsAgent = new https.Agent({
         rejectUnauthorized: !credentials.allow_self_signed_certs,
-        timeout: 10000
+        timeout: 10000,
       });
 
       // Test basic connection
@@ -98,12 +98,12 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `PVEAPIToken=${credentials.username}!${credentials.api_token_id}=${credentials.api_token_secret}`,
-          'Accept': 'application/json',
-          'User-Agent': 'Homey-ProxmoxVE/1.0'
+          Authorization: `PVEAPIToken=${credentials.username}!${credentials.api_token_id}=${credentials.api_token_secret}`,
+          Accept: 'application/json',
+          'User-Agent': 'Homey-ProxmoxVE/1.0',
         },
         agent: httpsAgent,
-        timeout: 10000
+        timeout: 10000,
       });
 
       if (!response.ok) {
@@ -115,12 +115,12 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       const clusterResponse = await fetch(clusterStatusUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `PVEAPIToken=${credentials.username}!${credentials.api_token_id}=${credentials.api_token_secret}`,
-          'Accept': 'application/json',
-          'User-Agent': 'Homey-ProxmoxVE/1.0'
+          Authorization: `PVEAPIToken=${credentials.username}!${credentials.api_token_id}=${credentials.api_token_secret}`,
+          Accept: 'application/json',
+          'User-Agent': 'Homey-ProxmoxVE/1.0',
         },
         agent: httpsAgent,
-        timeout: 10000
+        timeout: 10000,
       });
 
       if (!clusterResponse.ok) {
@@ -128,27 +128,26 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       }
 
       const clusterData = await clusterResponse.json();
-      const nodes = clusterData.data?.filter(item => item.type === 'node') || [];
-
+      const nodes = clusterData.data?.filter((item) => item.type === 'node') || [];
 
       return {
         success: true,
         clusterInfo: {
-          nodes: nodes.map(node => ({
+          nodes: nodes.map((node) => ({
             name: node.name,
             ip: node.ip,
-            online: node.online === 1
+            online: node.online === 1,
           })),
           totalNodes: nodes.length,
-          onlineNodes: nodes.filter(node => node.online === 1).length
-        }
+          onlineNodes: nodes.filter((node) => node.online === 1).length,
+        },
       };
 
     } catch (error) {
       this.error(this.homey.__('driver.connection_test_error'), error);
       return {
         success: false,
-        error: error.message || this.homey.__('error.connection_test_failed')
+        error: error.message || this.homey.__('error.connection_test_failed'),
       };
     }
   }
@@ -206,7 +205,9 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
         // Delegate to a method on the device instance
         const deviceResults = await specificDevice.getAutocompleteResults(query);
         results.push(...deviceResults);
-      } catch (error) { this.error(`Autocomplete API error for [${specificDevice.getName()}]:`, error.message); }
+      } catch (error) {
+        this.error(`Autocomplete API error for [${specificDevice.getName()}]:`, error.message);
+      }
     } else {
       // Fallback: If no specific device context, query all cluster devices (less ideal)
       this.log(this.homey.__('driver.autocomplete_global', { s: query }));
@@ -215,14 +216,15 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
         try {
           const deviceResults = await device.getAutocompleteResults(query);
           // Add cluster name to distinguish results
-          results.push(...deviceResults.map(r => ({ ...r, name: `${r.name} (@${device.getName()})` })));
-        } catch (deviceError) { this.error(`Autocomplete API error for cluster [${device.getName()}]:`, deviceError.message); }
+          results.push(...deviceResults.map((r) => ({ ...r, name: `${r.name} (@${device.getName()})` })));
+        } catch (deviceError) {
+          this.error(`Autocomplete API error for cluster [${device.getName()}]:`, deviceError.message);
+        }
       }
     }
     this.log(this.homey.__('driver.autocomplete_results', { s: results.length }));
     return results;
   }
-
 
   // --- Flow Run/Condition Listeners (Delegate to the specific device instance) ---
 
@@ -238,9 +240,17 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
   }
 
   // Specific run listeners calling the generic handler
-  async onFlowActionStartVm(args, state) { return this._handleVmAction(args, 'start'); }
-  async onFlowActionStopVm(args, state) { return this._handleVmAction(args, 'stop'); }
-  async onFlowActionShutdownVm(args, state) { return this._handleVmAction(args, 'shutdown'); }
+  async onFlowActionStartVm(args, state) {
+    return this._handleVmAction(args, 'start');
+  }
+
+  async onFlowActionStopVm(args, state) {
+    return this._handleVmAction(args, 'stop');
+  }
+
+  async onFlowActionShutdownVm(args, state) {
+    return this._handleVmAction(args, 'shutdown');
+  }
 
   // Run listener for VM/LXC Is Running Condition
   async onFlowConditionIsRunning(args, state) {
@@ -253,4 +263,4 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     return clusterDevice.checkVmStatus(args);
   }
 
-} // End of class ProxmoxClusterDriver
+}; // End of class ProxmoxClusterDriver

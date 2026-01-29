@@ -98,6 +98,7 @@
         "node_registering_flow": "Registreren node driver flow kaarten...",
         "node_shutdown_registered": "- Run listener voor shutdown_node geregistreerd.",
         "node_stop_registered": "- Run listener voor stop_node geregistreerd.",
+        "node_condition_registered": "- Luisteraar voor node_is_online geregistreerd.",
         "node_flow_not_found": "Kon flow actie kaart niet vinden: __s__",
         "node_flow_action_no_context": "Flow actie __s___node geactiveerd zonder apparaat context.",
         "node_flow_triggered": "Flow actie __s___node geactiveerd VOOR node [__s2__] (Apparaat: __s3__)",

@@ -1,0 +1,14 @@
+{
+    "id": "node_is_online",
+    "title": {
+        "en": "Node is online",
+        "nl": "Node is online"
+    },
+    "args": [
+        {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+        }
+    ]
+}

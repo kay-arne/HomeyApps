@@ -98,6 +98,7 @@
         "node_registering_flow": "Registering node driver flow cards...",
         "node_shutdown_registered": "- Run listener for shutdown_node registered.",
         "node_stop_registered": "- Run listener for stop_node registered.",
+        "node_condition_registered": "- Listener for node_is_online registered.",
         "node_flow_not_found": "Could not find flow action card: __s__",
         "node_critical_error_flow": "CRITICAL ERROR during Node Flow registration:",
         "node_flow_action_no_context": "Flow action __s___node triggered without device context.",

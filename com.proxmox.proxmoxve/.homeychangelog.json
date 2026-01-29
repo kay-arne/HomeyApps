@@ -22,5 +22,11 @@
   },
   "0.9.0": {
     "en": "Major Update: Added Node-level monitoring (VM/LXC counts), Robust Cluster Failover with auto-discovery of backup hosts, and significant performance/polling optimizations."
+  },
+  "0.9.1": {
+    "en": "Implement localization support (English & Dutch)"
+  },
+  "1.0.0": {
+    "en": "Production Release: Strict timeout fixes, polling persistence fixes, and UI improvements."
   }
 }

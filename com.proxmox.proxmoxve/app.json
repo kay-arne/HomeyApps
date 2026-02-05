@@ -13,8 +13,8 @@
     "nl": "Proxmox VE"
   },
   "description": {
-    "en": "Control and monitor your Proxmox VE cluster.",
-    "nl": "Beheer en monitor je Proxmox VE cluster."
+    "en": "Seamlessly integrate your Proxmox VE infrastructure.",
+    "nl": "Integreer naadloos je Proxmox VE infrastructuur."
   },
   "languages": [
     "en",

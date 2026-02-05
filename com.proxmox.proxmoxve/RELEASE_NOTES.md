@@ -1,5 +1,10 @@
 # Release Notes
 
+## v1.0.7 - UI Improvements
+- **Visual Updates**:
+    - Updated App Icon to a sleek black design.
+    - Optimized driver icons for better contrast.
+
 ## v1.0.6 - Certification Fixes
 - **App Store Improvements**:
     - Updated app description to meet marketing guidelines.

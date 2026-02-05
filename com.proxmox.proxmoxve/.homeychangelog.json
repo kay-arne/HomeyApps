@@ -43,5 +43,8 @@
   },
   "1.0.5": {
     "en": "Optimization: Instant failback to the Primary Node as soon as it becomes available."
+  },
+  "1.0.6": {
+    "en": "Certification Fixes: Updated app description and driver icons."
   }
 }

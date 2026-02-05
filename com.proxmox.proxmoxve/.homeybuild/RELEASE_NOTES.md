@@ -1,5 +1,10 @@
 # Release Notes
 
+## v1.0.6 - Certification Fixes
+- **App Store Improvements**:
+    - Updated app description to meet marketing guidelines.
+    - Updated driver icons to ensure uniqueness and clarity.
+
 ## v1.0.0 - Production Release
 
 ### 🚀 Major Improvements

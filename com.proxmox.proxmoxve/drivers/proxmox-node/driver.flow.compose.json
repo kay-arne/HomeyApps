@@ -10,9 +10,106 @@
     {
       "id": "stop_node",
       "title": {
-        "en": "Stop Node (Force)",
-        "nl": "Node Stoppen (Forceer)"
+        "en": "Force Stop all VMs/Containers on Node",
+        "nl": "Forceer Stop alle VM's/Containers op Node"
+      },
+      "hint": {
+        "en": "Immediately kills every running VM/Container on this node. Proxmox has no remote 'force power off' for the node itself, only for VMs/Containers, so this stops everything running on it instead. Risk of data loss - prefer Shutdown Node when possible.",
+        "nl": "Beëindigt onmiddellijk elke draaiende VM/Container op deze node. Proxmox heeft geen externe 'forceer uitschakelen' voor de node zelf, alleen voor VM's/Containers, dus dit stopt in plaats daarvan alles wat erop draait. Risico op dataverlies - gebruik indien mogelijk Node Uitschakelen."
       }
+    },
+    {
+      "id": "reboot_node",
+      "title": {
+        "en": "Reboot Node",
+        "nl": "Node Herstarten"
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "node_online",
+      "title": {
+        "en": "Node came online",
+        "nl": "Node is online gekomen"
+      }
+    },
+    {
+      "id": "node_offline",
+      "title": {
+        "en": "Node went offline",
+        "nl": "Node is offline gegaan"
+      }
+    },
+    {
+      "id": "cpu_usage_above",
+      "title": {
+        "en": "CPU usage is above a threshold",
+        "nl": "CPU-gebruik is boven een grenswaarde"
+      },
+      "titleFormatted": {
+        "en": "CPU usage is above [[threshold]] %",
+        "nl": "CPU-gebruik is boven [[threshold]] %"
+      },
+      "args": [
+        {
+          "name": "threshold",
+          "type": "number",
+          "title": {
+            "en": "Threshold (%)",
+            "nl": "Grenswaarde (%)"
+          },
+          "min": 0,
+          "max": 100,
+          "step": 1
+        }
+      ],
+      "tokens": [
+        {
+          "name": "value",
+          "type": "number",
+          "title": {
+            "en": "CPU Usage (%)",
+            "nl": "CPU-gebruik (%)"
+          },
+          "example": 87.5
+        }
+      ]
+    },
+    {
+      "id": "memory_usage_above",
+      "title": {
+        "en": "Memory usage is above a threshold",
+        "nl": "Geheugengebruik is boven een grenswaarde"
+      },
+      "titleFormatted": {
+        "en": "Memory usage is above [[threshold]] %",
+        "nl": "Geheugengebruik is boven [[threshold]] %"
+      },
+      "args": [
+        {
+          "name": "threshold",
+          "type": "number",
+          "title": {
+            "en": "Threshold (%)",
+            "nl": "Grenswaarde (%)"
+          },
+          "min": 0,
+          "max": 100,
+          "step": 1
+        }
+      ],
+      "tokens": [
+        {
+          "name": "value",
+          "type": "number",
+          "title": {
+            "en": "Memory Usage (%)",
+            "nl": "Geheugengebruik (%)"
+          },
+          "example": 62.3
+        }
+      ]
     }
   ]
 }

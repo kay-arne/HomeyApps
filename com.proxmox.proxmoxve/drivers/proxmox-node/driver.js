@@ -2,7 +2,6 @@
 
 const Homey = require('homey');
 
-
 // Driver for individual Proxmox Node devices
 module.exports = class ProxmoxNodeDriver extends Homey.Driver {
 
@@ -132,14 +131,24 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
         this.error(this.homey.__('driver.node_flow_not_found', { s: 'shutdown_node' }));
       }
 
-      // Register Stop Node Action
+      // Register Stop Node Action - repurposed: Proxmox's node power endpoint has no "force
+      // stop" for the host itself, so this force-stops every running VM/Container on the node
+      // instead (see ProxmoxNodeDevice#forceStopAllVms). Same card ID, so existing flows keep working.
       const stopNodeAction = this.homey.flow.getActionCard('stop_node');
       if (stopNodeAction) {
-        // Pass action name 'stop' using .bind()
-        stopNodeAction.registerRunListener(this.onFlowActionPower.bind(this, 'stop'));
+        stopNodeAction.registerRunListener(this.onFlowActionForceStopAllVms.bind(this));
         this.log(this.homey.__('driver.node_stop_registered'));
       } else {
         this.error(this.homey.__('driver.node_flow_not_found', { s: 'stop_node' }));
+      }
+
+      // Register Reboot Node Action
+      const rebootNodeAction = this.homey.flow.getActionCard('reboot_node');
+      if (rebootNodeAction) {
+        rebootNodeAction.registerRunListener(this.onFlowActionPower.bind(this, 'reboot'));
+        this.log(this.homey.__('driver.node_reboot_registered'));
+      } else {
+        this.error(this.homey.__('driver.node_flow_not_found', { s: 'reboot_node' }));
       }
 
       // Register Node is Online Condition
@@ -163,6 +172,19 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
       } else {
         this.error(this.homey.__('driver.node_flow_not_found', { s: 'node_is_online' }));
       }
+
+      // Register threshold triggers - runListener filters by each flow's configured threshold.
+      const registerThresholdTrigger = (id) => {
+        const card = this.homey.flow.getDeviceTriggerCard(id);
+        if (card) {
+          card.registerRunListener(async (args, state) => state.value >= args.threshold);
+          this.log(this.homey.__('driver.node_threshold_registered', { s: id }));
+        } else {
+          this.error(this.homey.__('driver.node_flow_not_found', { s: id }));
+        }
+      };
+      registerThresholdTrigger('cpu_usage_above');
+      registerThresholdTrigger('memory_usage_above');
 
     } catch (error) {
       this.error(this.homey.__('driver.node_critical_error_flow'), error);
@@ -189,6 +211,26 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
     } catch (error) {
       this.error(this.homey.__('driver.node_action_failed', { s: action, s2: nodeName }), error.message);
       // Re-throw the error (should already be translated by device method)
+      throw error;
+    }
+  }
+
+  // Run listener for the repurposed "Stop Node (Force)" card - see registerFlowHandlers().
+  async onFlowActionForceStopAllVms(args, state) {
+    const nodeDevice = args.device;
+    if (!nodeDevice) {
+      this.error(this.homey.__('driver.node_flow_action_no_context', { s: 'stop' }));
+      throw new Error(this.homey.__('error.device_context_missing'));
+    }
+
+    const nodeName = nodeDevice.getData().id;
+    this.log(this.homey.__('driver.node_flow_triggered', { s: 'stop', s2: nodeName, s3: nodeDevice.getName() }));
+
+    try {
+      await nodeDevice.forceStopAllVms();
+      return true;
+    } catch (error) {
+      this.error(this.homey.__('driver.node_action_failed', { s: 'stop', s2: nodeName }), error.message);
       throw error;
     }
   }

@@ -1,7 +1,8 @@
 'use strict';
 
 const Homey = require('homey');
-const crypto = require('crypto'); // For pairing temporary ID
+const fetch = require('node-fetch');
+const https = require('https');
 
 // Driver for the Proxmox Cluster connection devices
 module.exports = class ProxmoxClusterDriver extends Homey.Driver {
@@ -27,7 +28,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     session.setHandler('connection_setup', async (data) => {
 
       const {
-        hostname, username, api_token_id, api_token_secret, allow_self_signed_certs,
+        hostname, port, username, api_token_id, api_token_secret, allow_self_signed_certs,
       } = data;
 
       // Validate input
@@ -42,6 +43,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       try {
         const testResult = await this.testProxmoxConnection({
           hostname,
+          port: port ? parseInt(port, 10) : 8006,
           username,
           api_token_id,
           api_token_secret,
@@ -83,10 +85,9 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
 
   // Test Proxmox connection during pairing
   async testProxmoxConnection(credentials) {
-    const fetch = require('node-fetch');
-    const https = require('https');
-
     try {
+      const port = credentials.port || 8006;
+
       // Create HTTPS agent
       const httpsAgent = new https.Agent({
         rejectUnauthorized: !credentials.allow_self_signed_certs,
@@ -94,7 +95,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       });
 
       // Test basic connection
-      const url = `https://${credentials.hostname}:8006/api2/json/version`;
+      const url = `https://${credentials.hostname}:${port}/api2/json/version`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -111,7 +112,7 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       }
 
       // Get cluster information
-      const clusterStatusUrl = `https://${credentials.hostname}:8006/api2/json/cluster/status`;
+      const clusterStatusUrl = `https://${credentials.hostname}:${port}/api2/json/cluster/status`;
       const clusterResponse = await fetch(clusterStatusUrl, {
         method: 'GET',
         headers: {
@@ -181,7 +182,22 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       registerCard('Action', 'start_vm', this.onFlowActionStartVm, this.handleFlowArgumentAutocomplete);
       registerCard('Action', 'stop_vm', this.onFlowActionStopVm, this.handleFlowArgumentAutocomplete);
       registerCard('Action', 'shutdown_vm', this.onFlowActionShutdownVm, this.handleFlowArgumentAutocomplete);
+      registerCard('Action', 'reboot_vm', this.onFlowActionRebootVm, this.handleFlowArgumentAutocomplete);
       registerCard('Condition', 'vm_is_running', this.onFlowConditionIsRunning, this.handleFlowArgumentAutocomplete);
+      registerCard('DeviceTrigger', 'vm_started', this.onFlowTriggerVmState, this.handleFlowArgumentAutocomplete);
+      registerCard('DeviceTrigger', 'vm_stopped', this.onFlowTriggerVmState, this.handleFlowArgumentAutocomplete);
+
+      // migrate_vm has a second autocomplete argument (target_node), so it's wired by hand
+      // rather than through the single-arg registerCard helper above.
+      const migrateCard = this.homey.flow.getActionCard('migrate_vm');
+      if (migrateCard) {
+        migrateCard.registerRunListener(this.onFlowActionMigrateVm.bind(this));
+        migrateCard.getArgument('target_vm')?.registerAutocompleteListener(this.handleFlowArgumentAutocomplete.bind(this));
+        migrateCard.getArgument('target_node')?.registerAutocompleteListener(this.handleFlowNodeArgumentAutocomplete.bind(this));
+        this.log(this.homey.__('driver.flow_card_registered', { s: 'action', s2: 'migrate_vm' }));
+      } else {
+        this.error(this.homey.__('driver.flow_card_not_found', { s: 'action', s2: 'migrate_vm' }));
+      }
 
     } catch (error) {
       this.error(this.homey.__('driver.critical_error_flow'), error);
@@ -226,9 +242,23 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     return results;
   }
 
+  // Autocomplete handler for the migrate_vm action's target_node argument.
+  async handleFlowNodeArgumentAutocomplete(query, args) {
+    const clusterDevice = args?.device;
+    if (!clusterDevice || typeof clusterDevice.getNodeAutocompleteResults !== 'function') {
+      return [];
+    }
+    try {
+      return await clusterDevice.getNodeAutocompleteResults(query);
+    } catch (error) {
+      this.error(`Node autocomplete API error for [${clusterDevice.getName()}]:`, error.message);
+      return [];
+    }
+  }
+
   // --- Flow Run/Condition Listeners (Delegate to the specific device instance) ---
 
-  // Generic handler for start/stop/shutdown actions
+  // Generic handler for start/stop/shutdown/reboot actions
   async _handleVmAction(args, action) {
     const clusterDevice = args.device; // The specific ProxmoxClusterDevice instance
     if (!clusterDevice || typeof clusterDevice.executeVmAction !== 'function') {
@@ -252,6 +282,19 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     return this._handleVmAction(args, 'shutdown');
   }
 
+  async onFlowActionRebootVm(args, state) {
+    return this._handleVmAction(args, 'reboot');
+  }
+
+  async onFlowActionMigrateVm(args, state) {
+    const clusterDevice = args.device;
+    if (!clusterDevice || typeof clusterDevice.migrateVm !== 'function') {
+      this.error(this.homey.__('driver.flow_action_no_context', { s: 'migrate' }));
+      throw new Error(this.homey.__('error.device_context_missing'));
+    }
+    return clusterDevice.migrateVm(args);
+  }
+
   // Run listener for VM/LXC Is Running Condition
   async onFlowConditionIsRunning(args, state) {
     const clusterDevice = args.device; // The specific ProxmoxClusterDevice instance
@@ -261,6 +304,13 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     }
     // Delegate the check to the specific device instance
     return clusterDevice.checkVmStatus(args);
+  }
+
+  // Run listener for the vm_started/vm_stopped triggers - filters by the selected target_vm,
+  // same matching logic as the vm_is_running condition.
+  async onFlowTriggerVmState(args, state) {
+    if (!state || !args?.target_vm?.id) return false;
+    return Number(state.vmid) === Number(args.target_vm.id.vmid) && state.type === args.target_vm.id.type;
   }
 
 }; // End of class ProxmoxClusterDriver

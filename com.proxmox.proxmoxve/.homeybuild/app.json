@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.proxmox.proxmoxve",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "brandColor": "#D76300",
@@ -74,6 +74,272 @@
               "en": "Type to search...",
               "nl": "Typ om te zoeken..."
             }
+          }
+        ]
+      }
+    ],
+    "triggers": [
+      {
+        "id": "vm_started",
+        "title": {
+          "en": "A VM/Container started",
+          "nl": "Een VM/Container is gestart"
+        },
+        "titleFormatted": {
+          "en": "[[target_vm]] started",
+          "nl": "[[target_vm]] is gestart"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "name",
+            "type": "string",
+            "title": {
+              "en": "Name",
+              "nl": "Naam"
+            },
+            "example": "Media-Server"
+          },
+          {
+            "name": "vmid",
+            "type": "number",
+            "title": {
+              "en": "VM/Container ID",
+              "nl": "VM/Container ID"
+            },
+            "example": 105
+          }
+        ]
+      },
+      {
+        "id": "vm_stopped",
+        "title": {
+          "en": "A VM/Container stopped",
+          "nl": "Een VM/Container is gestopt"
+        },
+        "titleFormatted": {
+          "en": "[[target_vm]] stopped",
+          "nl": "[[target_vm]] is gestopt"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "name",
+            "type": "string",
+            "title": {
+              "en": "Name",
+              "nl": "Naam"
+            },
+            "example": "Media-Server"
+          },
+          {
+            "name": "vmid",
+            "type": "number",
+            "title": {
+              "en": "VM/Container ID",
+              "nl": "VM/Container ID"
+            },
+            "example": 105
+          }
+        ]
+      },
+      {
+        "id": "fallback_engaged",
+        "title": {
+          "en": "Connection switched to a fallback node",
+          "nl": "Verbinding overgeschakeld naar een fallback node"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          }
+        ]
+      },
+      {
+        "id": "fallback_restored",
+        "title": {
+          "en": "Connection restored to the primary node",
+          "nl": "Verbinding hersteld naar de primaire node"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          }
+        ]
+      },
+      {
+        "id": "cluster_quorum_lost",
+        "title": {
+          "en": "Cluster lost quorum",
+          "nl": "Cluster heeft quorum verloren"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          }
+        ]
+      },
+      {
+        "id": "cluster_quorum_restored",
+        "title": {
+          "en": "Cluster regained quorum",
+          "nl": "Cluster heeft quorum herwonnen"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          }
+        ]
+      },
+      {
+        "id": "node_online",
+        "title": {
+          "en": "Node came online",
+          "nl": "Node is online gekomen"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          }
+        ]
+      },
+      {
+        "id": "node_offline",
+        "title": {
+          "en": "Node went offline",
+          "nl": "Node is offline gegaan"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          }
+        ]
+      },
+      {
+        "id": "cpu_usage_above",
+        "title": {
+          "en": "CPU usage is above a threshold",
+          "nl": "CPU-gebruik is boven een grenswaarde"
+        },
+        "titleFormatted": {
+          "en": "CPU usage is above [[threshold]] %",
+          "nl": "CPU-gebruik is boven [[threshold]] %"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          },
+          {
+            "name": "threshold",
+            "type": "number",
+            "title": {
+              "en": "Threshold (%)",
+              "nl": "Grenswaarde (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1
+          }
+        ],
+        "tokens": [
+          {
+            "name": "value",
+            "type": "number",
+            "title": {
+              "en": "CPU Usage (%)",
+              "nl": "CPU-gebruik (%)"
+            },
+            "example": 87.5
+          }
+        ]
+      },
+      {
+        "id": "memory_usage_above",
+        "title": {
+          "en": "Memory usage is above a threshold",
+          "nl": "Geheugengebruik is boven een grenswaarde"
+        },
+        "titleFormatted": {
+          "en": "Memory usage is above [[threshold]] %",
+          "nl": "Geheugengebruik is boven [[threshold]] %"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          },
+          {
+            "name": "threshold",
+            "type": "number",
+            "title": {
+              "en": "Threshold (%)",
+              "nl": "Grenswaarde (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1
+          }
+        ],
+        "tokens": [
+          {
+            "name": "value",
+            "type": "number",
+            "title": {
+              "en": "Memory Usage (%)",
+              "nl": "Geheugengebruik (%)"
+            },
+            "example": 62.3
           }
         ]
       }
@@ -170,6 +436,82 @@
         ]
       },
       {
+        "id": "reboot_vm",
+        "title": {
+          "en": "Reboot VM/Container",
+          "nl": "VM/Container Herstarten"
+        },
+        "titleFormatted": {
+          "en": "Reboot [[target_vm]]",
+          "nl": "Herstart [[target_vm]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          }
+        ]
+      },
+      {
+        "id": "migrate_vm",
+        "title": {
+          "en": "Migrate VM/Container",
+          "nl": "VM/Container Migreren"
+        },
+        "titleFormatted": {
+          "en": "Migrate [[target_vm]] to [[target_node]]",
+          "nl": "Migreer [[target_vm]] naar [[target_node]]"
+        },
+        "hint": {
+          "en": "Moves the VM/Container to another node in the same cluster. Requires shared storage for a running VM/Container, unless the storage is already available on the target node.",
+          "nl": "Verplaatst de VM/Container naar een andere node in hetzelfde cluster. Vereist gedeelde opslag voor een draaiende VM/Container, tenzij de opslag al beschikbaar is op de doelnode."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          },
+          {
+            "name": "target_node",
+            "type": "autocomplete",
+            "title": {
+              "en": "Target Node",
+              "nl": "Doelnode"
+            },
+            "placeholder": {
+              "en": "Type to search for a node...",
+              "nl": "Typ om een node te zoeken..."
+            }
+          }
+        ]
+      },
+      {
         "id": "shutdown_node",
         "title": {
           "en": "Shutdown Node (Graceful)",
@@ -186,8 +528,26 @@
       {
         "id": "stop_node",
         "title": {
-          "en": "Stop Node (Force)",
-          "nl": "Node Stoppen (Forceer)"
+          "en": "Force Stop all VMs/Containers on Node",
+          "nl": "Forceer Stop alle VM's/Containers op Node"
+        },
+        "hint": {
+          "en": "Immediately kills every running VM/Container on this node. Proxmox has no remote 'force power off' for the node itself, only for VMs/Containers, so this stops everything running on it instead. Risk of data loss - prefer Shutdown Node when possible.",
+          "nl": "Beëindigt onmiddellijk elke draaiende VM/Container op deze node. Proxmox heeft geen externe 'forceer uitschakelen' voor de node zelf, alleen voor VM's/Containers, dus dit stopt in plaats daarvan alles wat erop draait. Risico op dataverlies - gebruik indien mogelijk Node Uitschakelen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          }
+        ]
+      },
+      {
+        "id": "reboot_node",
+        "title": {
+          "en": "Reboot Node",
+          "nl": "Node Herstarten"
         },
         "args": [
           {
@@ -222,6 +582,7 @@
         "measure_vm_count",
         "measure_lxc_count",
         "alarm_connection_fallback",
+        "alarm_cluster_quorum_lost",
         "status_connected_host"
       ],
       "settings": [
@@ -237,6 +598,21 @@
             "nl": "bv. pve.yourdomain.local of 192.168.1.100"
           },
           "value": ""
+        },
+        {
+          "id": "port",
+          "type": "number",
+          "label": {
+            "en": "API Port",
+            "nl": "API Poort"
+          },
+          "hint": {
+            "en": "Only change this if Proxmox is behind a reverse proxy on a non-default port. Leave at 8006 for a normal setup. This port is used for every connection, including auto-discovered backup nodes.",
+            "nl": "Wijzig dit alleen als Proxmox achter een reverse proxy op een niet-standaard poort draait. Laat op 8006 staan voor een normale opzet. Deze poort wordt gebruikt voor elke verbinding, ook voor automatisch gevonden backup nodes."
+          },
+          "value": 8006,
+          "min": 1,
+          "max": 65535
         },
         {
           "id": "username",
@@ -370,6 +746,7 @@
       "capabilities": [
         "measure_cpu_usage_perc",
         "measure_memory_usage_perc",
+        "measure_disk_usage_perc",
         "alarm_node_status",
         "measure_vm_count",
         "measure_lxc_count"
@@ -461,9 +838,133 @@
         }
       ],
       "id": "proxmox-node"
+    },
+    {
+      "images": {
+        "small": "/drivers/proxmox-vm/assets/images/small.png",
+        "large": "/drivers/proxmox-vm/assets/images/large.png",
+        "xlarge": "/drivers/proxmox-vm/assets/images/xlarge.png"
+      },
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "name": {
+        "en": "Proxmox VM/Container",
+        "nl": "Proxmox VM/Container"
+      },
+      "class": "other",
+      "capabilities": [
+        "onoff",
+        "measure_cpu_usage_perc",
+        "measure_memory_usage_perc"
+      ],
+      "settings": [
+        {
+          "id": "poll_interval_vm",
+          "type": "dropdown",
+          "label": {
+            "en": "Polling Interval",
+            "nl": "Polling Interval"
+          },
+          "hint": {
+            "en": "Update interval for this VM/Container's status, 0 disables polling.",
+            "nl": "Update interval voor de status van deze VM/Container, 0 schakelt polling uit."
+          },
+          "value": "1",
+          "values": [
+            {
+              "id": "0",
+              "label": {
+                "en": "Disabled",
+                "nl": "Uitgeschakeld"
+              }
+            },
+            {
+              "id": "0.5",
+              "label": {
+                "en": "30 Seconds",
+                "nl": "30 Seconden"
+              }
+            },
+            {
+              "id": "1",
+              "label": {
+                "en": "1 Minute",
+                "nl": "1 Minuut"
+              }
+            },
+            {
+              "id": "5",
+              "label": {
+                "en": "5 Minutes",
+                "nl": "5 Minuten"
+              }
+            },
+            {
+              "id": "10",
+              "label": {
+                "en": "10 Minutes",
+                "nl": "10 Minuten"
+              }
+            }
+          ]
+        }
+      ],
+      "pair": [
+        {
+          "id": "list_all_vms",
+          "template": "list_devices",
+          "title": {
+            "en": "Select VM(s)/Container(s) to Add",
+            "nl": "Selecteer VM('s)/Container(s) om Toe te Voegen"
+          },
+          "navigation": {
+            "next": "add_devices"
+          },
+          "options": {
+            "showLoader": true
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "proxmox-vm"
     }
   ],
   "capabilities": {
+    "alarm_cluster_quorum_lost": {
+      "type": "boolean",
+      "title": {
+        "en": "Cluster Quorum Lost",
+        "nl": "Cluster Quorum Verloren"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "insightsTitleTrue": {
+        "en": "Cluster lost quorum",
+        "nl": "Cluster heeft quorum verloren"
+      },
+      "insightsTitleFalse": {
+        "en": "Cluster regained quorum",
+        "nl": "Cluster heeft quorum herwonnen"
+      },
+      "titleTrue": {
+        "en": "Quorum Lost",
+        "nl": "Quorum Verloren"
+      },
+      "titleFalse": {
+        "en": "Quorate",
+        "nl": "Quorum OK"
+      },
+      "icon": "assets/network-disconnected.svg"
+    },
     "alarm_connection_fallback": {
       "type": "boolean",
       "title": {
@@ -526,6 +1027,22 @@
       "max": 100,
       "uiComponent": "sensor",
       "icon": "assets/cpu.svg",
+      "insights": true
+    },
+    "measure_disk_usage_perc": {
+      "type": "number",
+      "title": {
+        "en": "Disk Usage",
+        "nl": "Schijfgebruik"
+      },
+      "getable": true,
+      "setable": false,
+      "units": "%",
+      "decimals": 1,
+      "min": 0,
+      "max": 100,
+      "uiComponent": "sensor",
+      "icon": "assets/disk.svg",
       "insights": true
     },
     "measure_lxc_count": {

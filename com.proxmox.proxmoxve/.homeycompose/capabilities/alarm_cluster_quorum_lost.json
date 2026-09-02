@@ -1,0 +1,28 @@
+{
+  "type": "boolean",
+  "title": {
+    "en": "Cluster Quorum Lost",
+    "nl": "Cluster Quorum Verloren"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true,
+  "insightsTitleTrue": {
+    "en": "Cluster lost quorum",
+    "nl": "Cluster heeft quorum verloren"
+  },
+  "insightsTitleFalse": {
+    "en": "Cluster regained quorum",
+    "nl": "Cluster heeft quorum herwonnen"
+  },
+  "titleTrue": {
+    "en": "Quorum Lost",
+    "nl": "Quorum Verloren"
+  },
+  "titleFalse": {
+    "en": "Quorate",
+    "nl": "Quorum OK"
+  },
+  "icon": "assets/network-disconnected.svg"
+}

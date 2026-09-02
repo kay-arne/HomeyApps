@@ -16,6 +16,10 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     this.pendingRequests = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache TTL
     this.activeTimeouts = new Set();
+    this._vmStateCache = new Map(); // `${type}-${vmid}` => last known isRunning, for start/stop trigger edges
+    this._vmNodeCache = new Map(); // `${type}-${vmid}` => { node, ts }, short TTL to coalesce action bursts
+    this._vmNodeCacheTtl = 15000;
+    this._triggerCards = new Map();
 
     // Initialize Helpers
     this.hostManager = new HostManager(this.log.bind(this));
@@ -49,6 +53,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     const s = settings || this.getSettings();
     return {
       hostname: s.hostname,
+      port: Number(s.port) || 8006,
       username: s.username,
       tokenId: s.api_token_id,
       tokenSecret: s.api_token_secret,
@@ -63,31 +68,30 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
 
   async onSettings({ newSettings, changedKeys }) {
     this.log(this.homey.__('driver.settings_updated'));
-    try {
-      // Update Client Credentials
-      this.proxmoxClient.updateCredentials(this._getCredentialsFromSettings(newSettings));
 
-      let connectionOK = false;
+    // Update Client Credentials
+    this.proxmoxClient.updateCredentials(this._getCredentialsFromSettings(newSettings));
 
-      if (changedKeys.includes('hostname')) {
-        this.log(this.homey.__('driver.primary_hostname_changed'));
-        // Reset Host Manager Primary
-        this.hostManager.setPrimaryHost(newSettings.hostname);
+    if (changedKeys.includes('hostname')) {
+      this.log(this.homey.__('driver.primary_hostname_changed'));
+      // Reset Host Manager Primary
+      this.hostManager.setPrimaryHost(newSettings.hostname);
 
-        await this._updateCapability('alarm_connection_fallback', false);
-        await this._updateCapability('status_connected_host', newSettings.hostname);
+      await this._updateCapability('alarm_connection_fallback', false);
+      await this._updateCapability('status_connected_host', newSettings.hostname);
 
-        connectionOK = await this.testApiConnection(newSettings);
-      } else {
-        await this.updateStatusAndConnection();
-        connectionOK = this.getAvailable();
+      const connectionOK = await this.testApiConnection(newSettings);
+      if (!connectionOK) {
+        // Throwing here rejects the settings save and shows the message in the Homey UI,
+        // instead of silently accepting a hostname that can't actually be reached.
+        throw new Error(this.homey.__('driver.settings_connection_failed'));
       }
+    } else {
+      await this.updateStatusAndConnection().catch(this.error);
+    }
 
-      if (changedKeys.includes('poll_interval_cluster')) {
-        this.startPolling(newSettings.poll_interval_cluster);
-      }
-    } catch (error) {
-      this.error('Error processing settings update:', error);
+    if (changedKeys.includes('poll_interval_cluster')) {
+      this.startPolling(newSettings.poll_interval_cluster);
     }
   }
 
@@ -111,7 +115,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     const effectiveVal = (val !== null && val !== undefined && val !== '') ? val : '5';
 
     const pollIntervalMinutes = parseFloat(effectiveVal);
-    if (isNaN(pollIntervalMinutes) || pollIntervalMinutes <= 0) return;
+    if (Number.isNaN(pollIntervalMinutes) || pollIntervalMinutes <= 0) return;
 
     const pollIntervalMs = pollIntervalMinutes * 60 * 1000;
     const jitter = Math.random() * 30000;
@@ -193,9 +197,10 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       if (sortedCurrent !== sortedNew) {
         this.log(this.homey.__('driver.updating_backup_hosts', { s: sortedNew }));
         await this.setSettings({ backup_hosts: sortedNew }).catch((e) => this.error(this.homey.__('driver.failed_update_backup_hosts'), e));
-        // Note: HostManager will pick this up on restart, or we can feed it live if we wanted to be fancy,
-        // but health check already discovers "otherNodes" below anyway.
       }
+      // Feed newly discovered hosts into the live HostManager immediately, so failover
+      // doesn't have to wait for a device restart to pick them up from settings.
+      for (const ip of newBackupHosts) this.hostManager.registerHost(ip);
       // -----------------------------
 
       // 2. Select a subset of nodes to ping to verify connectivity/latency
@@ -213,8 +218,8 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
         nodesToPing.add(otherNodes[Math.floor(Math.random() * otherNodes.length)]);
       }
 
-      // Execute Pings
-      for (const host of nodesToPing) {
+      // Execute Pings (in parallel - sequential awaits would let unreachable hosts stack up their timeouts)
+      await Promise.all(Array.from(nodesToPing).map(async (host) => {
         const start = Date.now();
         try {
           // Use Client directly to target specific host
@@ -223,7 +228,7 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
         } catch (err) {
           this.hostManager.updateHostStatus(host, false);
         }
-      }
+      }));
 
       this.hostManager.cleanup();
 
@@ -241,10 +246,15 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     const isGet = (options.method || 'GET') === 'GET';
     const cacheKey = `${urlPath}:${JSON.stringify(options)}`;
 
-    // Skip reading cache if skipCache OR refreshCache is true
-    if (isGet && !options.skipCache && !options.refreshCache) {
-      const cached = this._getCachedResponse(cacheKey);
-      if (cached) return cached;
+    // Skip reading the TTL cache if skipCache OR refreshCache is true, but still join an
+    // already in-flight request for the same key - concurrent refreshCache callers (e.g.
+    // several node devices polling cluster/resources around the same time) should share
+    // one request rather than each firing their own.
+    if (isGet && !options.skipCache) {
+      if (!options.refreshCache) {
+        const cached = this._getCachedResponse(cacheKey);
+        if (cached) return cached;
+      }
 
       if (this.pendingRequests.has(cacheKey)) {
         return this.pendingRequests.get(cacheKey);
@@ -343,31 +353,41 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     try {
       // Use refreshCache: true to ensure we fetch fresh data on every poll,
       // but also update the cache so other consumers get semi-fresh data.
-      const statusData = await this._executeApiCallWithFallback('/api2/json/cluster/status', { refreshCache: true });
-      const resourcesData = await this._executeApiCallWithFallback('/api2/json/cluster/resources', { refreshCache: true });
+      // Fetched in parallel - these are two independent endpoints.
+      const [statusData, resourcesData] = await Promise.all([
+        this._executeApiCallWithFallback('/api2/json/cluster/status', { refreshCache: true }),
+        this._executeApiCallWithFallback('/api2/json/cluster/resources', { refreshCache: true }),
+      ]);
 
-      // Process Node Count
+      // Process Node Count + Quorum
       let nodeCount = 0;
+      let quorate = null;
       if (Array.isArray(statusData?.data)) {
         nodeCount = statusData.data.filter((n) => n.type === 'node' && n.online === 1).length;
+        const clusterInfo = statusData.data.find((n) => n.type === 'cluster');
+        if (clusterInfo) quorate = !!clusterInfo.quorate;
       }
 
-      // Process VM/LXC Count
+      // Process VM/LXC Count + per-VM start/stop trigger detection
       let vmCount = 0;
       let lxcCount = 0;
       if (Array.isArray(resourcesData?.data)) {
-        resourcesData.data.forEach((r) => {
-          if (r.status === 'running') {
+        const resources = resourcesData.data.filter((r) => r.type === 'qemu' || r.type === 'lxc');
+        for (const r of resources) {
+          const isRunning = r.status === 'running';
+          if (isRunning) {
             if (r.type === 'qemu') vmCount++;
             if (r.type === 'lxc') lxcCount++;
           }
-        });
+          this._detectVmStateChange(r, isRunning);
+        }
       }
 
       // Update Capabilities
       await this._updateCapability('measure_node_count', nodeCount);
       await this._updateCapability('measure_vm_count', vmCount);
       await this._updateCapability('measure_lxc_count', lxcCount);
+      if (quorate !== null) await this._updateCapabilityWithTrigger('alarm_cluster_quorum_lost', !quorate, 'cluster_quorum_lost', 'cluster_quorum_restored');
 
       if (!this.getAvailable()) await this.setAvailable();
 
@@ -376,9 +396,25 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     }
   }
 
+  // Fires vm_started/vm_stopped triggers on an actual running-state transition.
+  // Skipped on the first observation of a given VM (no previous state to compare against),
+  // so app restarts don't spam "started" for everything that's already running.
+  _detectVmStateChange(resource, isRunning) {
+    const key = `${resource.type}-${resource.vmid}`;
+    const previous = this._vmStateCache.get(key);
+    this._vmStateCache.set(key, isRunning);
+
+    if (previous === undefined || previous === isRunning) return;
+
+    const triggerId = isRunning ? 'vm_started' : 'vm_stopped';
+    const tokens = { name: resource.name || `${resource.type} ${resource.vmid}`, vmid: resource.vmid };
+    const state = { vmid: resource.vmid, type: resource.type };
+    this._getTriggerCard(triggerId)?.trigger(this, tokens, state).catch(this.error);
+  }
+
   async _updateConnectionCapabilities(currentHost, isFallback) {
     const isUsingFallback = (currentHost !== this.hostManager.primaryHost);
-    await this._updateCapability('alarm_connection_fallback', isUsingFallback);
+    await this._updateCapabilityWithTrigger('alarm_connection_fallback', isUsingFallback, 'fallback_engaged', 'fallback_restored');
     await this._updateCapability('status_connected_host', currentHost);
   }
 
@@ -389,6 +425,33 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     if (this.getCapabilityValue(id) !== value) {
       await this.setCapabilityValue(id, value).catch((e) => this.error(this.homey.__('driver.failed_to_set_capability', { s: id }), e));
     }
+  }
+
+  // Like _updateCapability, but fires a device trigger card on an actual transition.
+  // trueTriggerId fires when the value becomes true, falseTriggerId when it becomes false.
+  // The very first observation (capability still unset) does not fire either trigger.
+  async _updateCapabilityWithTrigger(id, value, trueTriggerId, falseTriggerId) {
+    if (!this.hasCapability(id)) return;
+    const previous = this.getCapabilityValue(id);
+    if (previous === value) return;
+
+    await this._updateCapability(id, value);
+    if (previous === null) return; // first observation since init/pairing - not a real transition
+
+    const triggerId = value ? trueTriggerId : falseTriggerId;
+    this._getTriggerCard(triggerId)?.trigger(this).catch(this.error);
+  }
+
+  _getTriggerCard(id) {
+    if (!this._triggerCards.has(id)) {
+      try {
+        this._triggerCards.set(id, this.homey.flow.getDeviceTriggerCard(id));
+      } catch (e) {
+        this.error(`Trigger card not found: ${id}`, e);
+        this._triggerCards.set(id, null);
+      }
+    }
+    return this._triggerCards.get(id);
   }
 
   _getCachedResponse(key) {
@@ -441,10 +504,13 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
   async executeVmAction(args, action) {
     const { vmid, type } = args.target_vm.id;
     if (!vmid || !type) throw new Error(this.homey.__('error.invalid_target'));
+    return this._runVmAction(vmid, type, action);
+  }
 
+  // Shared by the target_vm-based flow actions and the proxmox-vm driver's onoff listener.
+  async _runVmAction(vmid, type, action) {
     this.log(this.homey.__('driver.action_log', { s: action, s2: type, s3: vmid }));
 
-    // Find Node for VM
     const node = await this._findNodeForVm(vmid, type);
     const endpoint = `/api2/json/nodes/${node}/${type}/${vmid}/status/${action}`;
 
@@ -454,24 +520,65 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     await this._executeApiCallWithFallback(endpoint, { method: 'POST', body });
   }
 
+  async migrateVm(args) {
+    const { vmid, type } = args.target_vm.id;
+    const targetNode = args.target_node?.id;
+    if (!vmid || !type) throw new Error(this.homey.__('error.invalid_target'));
+    if (!targetNode) throw new Error(this.homey.__('error.invalid_node_target'));
+
+    this.log(this.homey.__('driver.migrate_log', { s: type, s2: vmid, s3: targetNode }));
+
+    const currentNode = await this._findNodeForVm(vmid, type);
+    const endpoint = `/api2/json/nodes/${currentNode}/${type}/${vmid}/migrate`;
+
+    await this._executeApiCallWithFallback(endpoint, { method: 'POST', body: `target=${encodeURIComponent(targetNode)}` });
+  }
+
   async checkVmStatus(args) {
     const { vmid, type } = args.target_vm.id;
     if (!vmid || !type) throw new Error(this.homey.__('error.invalid_target'));
 
-    const node = await this._findNodeForVm(vmid, type);
+    const node = await this._findNodeForVm(vmid, type, { skipShortCache: true });
     const endpoint = `/api2/json/nodes/${node}/${type}/${vmid}/status/current`;
 
     const res = await this._executeApiCallWithFallback(endpoint, { skipCache: true });
     return res?.data?.status === 'running';
   }
 
-  async _findNodeForVm(vmid, type) {
-    // Also skip cache here to handle migrations correctly?
-    // Resources call is heavy, but if we don't, checkVmStatus might fail if node migrated recently.
-    // Given flow runs are user-triggered, safety first.
+  async getNodeAutocompleteResults(query) {
+    const results = [];
+    try {
+      const res = await this._executeApiCallWithFallback('/api2/json/cluster/status');
+      if (Array.isArray(res?.data)) {
+        const q = (query || '').toLowerCase();
+        res.data
+          .filter((n) => n.type === 'node' && n.online === 1 && n.name.toLowerCase().includes(q))
+          .forEach((n) => results.push({ name: n.name, id: n.name }));
+      }
+    } catch (e) {
+      this.error(this.homey.__('driver.autocomplete_failed'), e);
+    }
+    return results;
+  }
+
+  async _findNodeForVm(vmid, type, { skipShortCache = false } = {}) {
+    const key = `${type}-${vmid}`;
+
+    // Short-TTL cache so a burst of flow actions (e.g. a scene stopping several VMs)
+    // shares one resources lookup instead of each firing its own.
+    if (!skipShortCache) {
+      const cached = this._vmNodeCache.get(key);
+      if (cached && (Date.now() - cached.ts) < this._vmNodeCacheTtl) return cached.node;
+    }
+
+    // Skip the long-TTL response cache here to handle migrations correctly - flow runs
+    // are user-triggered, so safety (fresh data) beats the small extra cost.
     const res = await this._executeApiCallWithFallback('/api2/json/cluster/resources', { skipCache: true });
-    const target = res?.data?.find((r) => r.vmid == vmid && r.type == type); // loose equality just in case of string/int mismatch
+    // Numeric coercion, not string equality: vmid can arrive as a string (flow argument) or number (API response)
+    const target = res?.data?.find((r) => Number(r.vmid) === Number(vmid) && r.type === type);
     if (!target || !target.node) throw new Error(this.homey.__('error.vm_not_found', { s: vmid }));
+
+    this._vmNodeCache.set(key, { node: target.node, ts: Date.now() });
     return target.node;
   }
 

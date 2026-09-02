@@ -10,6 +10,7 @@ class ProxmoxClient {
     this._credentials = credentials;
     this._options = options;
     this._validateCredentials(credentials);
+    this._agents = new Map(); // rejectUnauthorized => https.Agent (shared, keeps keepAlive pooling effective)
   }
 
   _validateCredentials(credentials) {
@@ -38,18 +39,30 @@ class ProxmoxClient {
     // If undefined, default to false (secure by default)
     const rejectUnauthorized = !this._credentials.allow_self_signed_certs;
 
-    return new https.Agent({
-      rejectUnauthorized,
-      timeout: this._options.timeout || 15000,
-      keepAlive: true,
-      maxSockets: 5,
-    });
+    // Reuse one Agent per trust setting so `keepAlive` connection pooling actually applies
+    // (Node's http.Agent already multiplexes per-host internally, so no need to key by host).
+    let agent = this._agents.get(rejectUnauthorized);
+    if (!agent) {
+      agent = new https.Agent({
+        rejectUnauthorized,
+        timeout: this._options.timeout || 15000,
+        keepAlive: true,
+        maxSockets: 5,
+      });
+      this._agents.set(rejectUnauthorized, agent);
+    }
+    return agent;
   }
 
   async request(host, path, options = {}) {
     // Determine host to use: override provided in options, or default from credentials
     const targetHost = host || this._credentials.hostname;
-    const url = `https://${targetHost}:8006${path}`;
+
+    // The configured port applies to every host we talk to, not just the primary one - a
+    // reverse proxy in front of the cluster is typically the single ingress for all access,
+    // including failover targets, so backup/failover nodes need the same port too.
+    const port = this._credentials.port || 8006;
+    const url = `https://${targetHost}:${port}${path}`;
 
     const method = options.method || 'GET';
     const timeout = options.timeout || this._options.timeout || 15000;

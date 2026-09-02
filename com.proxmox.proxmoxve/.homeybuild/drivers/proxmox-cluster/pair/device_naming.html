@@ -192,6 +192,7 @@
                     data: { id: `proxmox-cluster-${uniqueSessionId}` },
                     settings: {
                         hostname: window.connectionData.hostname,
+                        port: window.connectionData.port ? parseInt(window.connectionData.port, 10) : 8006,
                         username: window.connectionData.username,
                         api_token_id: window.connectionData.api_token_id,
                         api_token_secret: window.connectionData.api_token_secret,
@@ -204,6 +205,7 @@
                         'measure_vm_count',
                         'measure_lxc_count',
                         'alarm_connection_fallback',
+                        'alarm_cluster_quorum_lost',
                         'status_connected_host'
                     ],
                     icon: "/cluster.svg"

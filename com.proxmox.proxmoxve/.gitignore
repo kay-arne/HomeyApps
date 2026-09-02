@@ -2,3 +2,4 @@ node_modules/
 .homeybuild/
 .homeycompose/app.json
 tests/
+lint_output.txt

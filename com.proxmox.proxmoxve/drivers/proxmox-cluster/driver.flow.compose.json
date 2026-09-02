@@ -74,6 +74,72 @@
           }
         }
       ]
+    },
+    {
+      "id": "reboot_vm",
+      "title": {
+        "en": "Reboot VM/Container",
+        "nl": "VM/Container Herstarten"
+      },
+      "titleFormatted": {
+        "en": "Reboot [[target_vm]]",
+        "nl": "Herstart [[target_vm]]"
+      },
+      "args": [
+        {
+          "name": "target_vm",
+          "type": "autocomplete",
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
+        }
+      ]
+    },
+    {
+      "id": "migrate_vm",
+      "title": {
+        "en": "Migrate VM/Container",
+        "nl": "VM/Container Migreren"
+      },
+      "titleFormatted": {
+        "en": "Migrate [[target_vm]] to [[target_node]]",
+        "nl": "Migreer [[target_vm]] naar [[target_node]]"
+      },
+      "hint": {
+        "en": "Moves the VM/Container to another node in the same cluster. Requires shared storage for a running VM/Container, unless the storage is already available on the target node.",
+        "nl": "Verplaatst de VM/Container naar een andere node in hetzelfde cluster. Vereist gedeelde opslag voor een draaiende VM/Container, tenzij de opslag al beschikbaar is op de doelnode."
+      },
+      "args": [
+        {
+          "name": "target_vm",
+          "type": "autocomplete",
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
+        },
+        {
+          "name": "target_node",
+          "type": "autocomplete",
+          "title": {
+            "en": "Target Node",
+            "nl": "Doelnode"
+          },
+          "placeholder": {
+            "en": "Type to search for a node...",
+            "nl": "Typ om een node te zoeken..."
+          }
+        }
+      ]
     }
   ],
   "conditions": [
@@ -101,6 +167,126 @@
           }
         }
       ]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "vm_started",
+      "title": {
+        "en": "A VM/Container started",
+        "nl": "Een VM/Container is gestart"
+      },
+      "titleFormatted": {
+        "en": "[[target_vm]] started",
+        "nl": "[[target_vm]] is gestart"
+      },
+      "args": [
+        {
+          "name": "target_vm",
+          "type": "autocomplete",
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
+        }
+      ],
+      "tokens": [
+        {
+          "name": "name",
+          "type": "string",
+          "title": {
+            "en": "Name",
+            "nl": "Naam"
+          },
+          "example": "Media-Server"
+        },
+        {
+          "name": "vmid",
+          "type": "number",
+          "title": {
+            "en": "VM/Container ID",
+            "nl": "VM/Container ID"
+          },
+          "example": 105
+        }
+      ]
+    },
+    {
+      "id": "vm_stopped",
+      "title": {
+        "en": "A VM/Container stopped",
+        "nl": "Een VM/Container is gestopt"
+      },
+      "titleFormatted": {
+        "en": "[[target_vm]] stopped",
+        "nl": "[[target_vm]] is gestopt"
+      },
+      "args": [
+        {
+          "name": "target_vm",
+          "type": "autocomplete",
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
+        }
+      ],
+      "tokens": [
+        {
+          "name": "name",
+          "type": "string",
+          "title": {
+            "en": "Name",
+            "nl": "Naam"
+          },
+          "example": "Media-Server"
+        },
+        {
+          "name": "vmid",
+          "type": "number",
+          "title": {
+            "en": "VM/Container ID",
+            "nl": "VM/Container ID"
+          },
+          "example": 105
+        }
+      ]
+    },
+    {
+      "id": "fallback_engaged",
+      "title": {
+        "en": "Connection switched to a fallback node",
+        "nl": "Verbinding overgeschakeld naar een fallback node"
+      }
+    },
+    {
+      "id": "fallback_restored",
+      "title": {
+        "en": "Connection restored to the primary node",
+        "nl": "Verbinding hersteld naar de primaire node"
+      }
+    },
+    {
+      "id": "cluster_quorum_lost",
+      "title": {
+        "en": "Cluster lost quorum",
+        "nl": "Cluster heeft quorum verloren"
+      }
+    },
+    {
+      "id": "cluster_quorum_restored",
+      "title": {
+        "en": "Cluster regained quorum",
+        "nl": "Cluster heeft quorum herwonnen"
+      }
     }
   ]
 }

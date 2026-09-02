@@ -46,5 +46,11 @@
   },
   "1.0.6": {
     "en": "Certification Fixes: Updated app description and driver icons."
+  },
+  "1.0.7": {
+    "en": "UI Improvements: Updated App Icon and optimized driver icons."
+  },
+  "1.1.0": {
+    "en": "Major Update: Added Flow triggers (VM start/stop, node online/offline, fallback, cluster quorum, CPU/memory thresholds), Reboot and Migrate VM/Container actions, a new per-VM/Container device driver, cluster quorum and node disk usage sensors, an optional API port field for reverse proxy setups, connection performance improvements, and fixed the Stop Node (Force) action which previously always failed."
   }
 }

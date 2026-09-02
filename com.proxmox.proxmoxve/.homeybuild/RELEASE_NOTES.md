@@ -1,5 +1,51 @@
 # Release Notes
 
+## v1.1.0 - Flow Triggers, New VM Driver & Performance
+
+### 🚀 New Features
+- **Flow Triggers**: The app previously had zero trigger cards. Added:
+    - `A VM/Container started` / `stopped` (per-VM, with name/vmid tokens).
+    - `Node came online` / `went offline`.
+    - `Connection switched to a fallback node` / `restored to the primary node`.
+    - `Cluster lost quorum` / `regained quorum`.
+    - `CPU usage is above a threshold` / `Memory usage is above a threshold`.
+- **New "Proxmox VM/Container" driver**: individual VMs/LXCs can now be paired as their own
+  Homey devices with an on/off tile (start/shutdown) and live CPU/Memory sensors - giving you
+  dashboard tiles and automatic "turned on/off" Flow cards per VM, in addition to the existing
+  cluster-level target-VM Flow cards.
+- **Reboot actions**: `Reboot VM/Container` and `Reboot Node`.
+- **Migrate VM/Container action**: move a VM/Container to another node in the same cluster.
+- **New sensors**: Cluster Quorum Lost (alarm) and Node Disk Usage (%).
+- **Configurable API port**: added an optional Port field (pairing and device settings) for
+  setups running Proxmox behind a reverse proxy on a non-default port. Defaults to 8006, matching
+  existing behavior. Applies to every connection the app makes, including auto-discovered
+  backup/failover nodes, since a reverse proxy is typically the single ingress point for the
+  whole cluster. (Thanks for the suggestion!)
+
+### 🐛 Fixes
+- **"Stop Node (Force)" repurposed**: Proxmox's node power API only supports `reboot`/`shutdown` -
+  there is no remote "force power off" for the node itself. This card previously sent an invalid
+  command and always failed. It now force-stops every running VM/Container on that node instead,
+  which is both valid and a genuinely useful "emergency stop everything on this node" action.
+  Existing Flows using this card keep working, just with corrected (and now functional) behavior.
+
+### ⚡ Performance & Reliability
+- Reused HTTPS connections (fixed a bug where a fresh `Agent` - and its connection pool - was
+  created on every single API request, defeating `keepAlive`).
+- Newly discovered backup hosts are now fed into the live failover manager immediately, instead
+  of only taking effect after an app/device restart.
+- Node devices now poll with jitter, like the cluster device already did, to avoid multiple
+  devices firing identical requests in lockstep.
+- Health-check pings now run in parallel instead of sequentially.
+- Cluster status/resources and node status/resources are now fetched in parallel per poll.
+- Flow-action VM lookups are now short-cached so a burst of actions (e.g. a scene stopping
+  several VMs) shares one lookup instead of each firing its own.
+
+## v1.0.7 - UI Improvements
+- **Visual Updates**:
+    - Updated App Icon to a sleek black design.
+    - Optimized driver icons for better contrast.
+
 ## v1.0.6 - Certification Fixes
 - **App Store Improvements**:
     - Updated app description to meet marketing guidelines.

@@ -1,45 +1,28 @@
 {
   "name": {
-    "en": "Proxmox Node",
-    "nl": "Proxmox Node"
+    "en": "Proxmox VM/Container",
+    "nl": "Proxmox VM/Container"
   },
   "class": "other",
   "capabilities": [
+    "onoff",
     "measure_cpu_usage_perc",
-    "measure_memory_usage_perc",
-    "measure_disk_usage_perc",
-    "alarm_node_status",
-    "measure_vm_count",
-    "measure_lxc_count"
+    "measure_memory_usage_perc"
   ],
   "$extends": [
     "defaults"
   ],
-  "capabilitiesOptions": {
-    "measure_vm_count": {
-      "title": {
-        "en": "Active VMs",
-        "nl": "Actieve VM's"
-      }
-    },
-    "measure_lxc_count": {
-      "title": {
-        "en": "Active LXCs",
-        "nl": "Actieve LXC's"
-      }
-    }
-  },
   "settings": [
     {
-      "id": "poll_interval_node",
+      "id": "poll_interval_vm",
       "type": "dropdown",
       "label": {
-        "en": "Polling Interval (Node)",
-        "nl": "Polling Interval (Node)"
+        "en": "Polling Interval",
+        "nl": "Polling Interval"
       },
       "hint": {
-        "en": "Update interval for node stats in minutes. 0 disables polling.",
-        "nl": "Update interval voor node stats in minuten. 0 schakelt polling uit."
+        "en": "Update interval for this VM/Container's status, 0 disables polling.",
+        "nl": "Update interval voor de status van deze VM/Container, 0 schakelt polling uit."
       },
       "value": "1",
       "values": [
@@ -83,11 +66,11 @@
   ],
   "pair": [
     {
-      "id": "list_all_nodes",
+      "id": "list_all_vms",
       "template": "list_devices",
       "title": {
-        "en": "Select Node(s) to Add",
-        "nl": "Selecteer Node(s) om Toe te Voegen"
+        "en": "Select VM(s)/Container(s) to Add",
+        "nl": "Selecteer VM('s)/Container(s) om Toe te Voegen"
       },
       "navigation": {
         "next": "add_devices"

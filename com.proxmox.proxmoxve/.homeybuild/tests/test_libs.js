@@ -39,6 +39,17 @@ async function testHostManager() {
   assert.ok(list.includes('primary.local'), 'Healthy primary should be included');
   assert.strictEqual(list[0], 'primary.local');
 
+  // 4. registerHost: newly discovered hosts should be usable immediately, without waiting
+  // for a restart to re-run initialize() with the updated backup_hosts setting.
+  assert.ok(!hm.getOrderedHostList().includes('discovered.local'));
+  hm.registerHost('discovered.local');
+  assert.ok(hm.getOrderedHostList().includes('discovered.local'), 'Newly registered host should be an immediate fallback candidate');
+
+  // registerHost should not clobber an already-known host's stats
+  hm.updateHostStatus('discovered.local', true, 5);
+  hm.registerHost('discovered.local');
+  assert.strictEqual(hm.hosts.get('discovered.local').responseTime, 5, 'registerHost should be a no-op for an already-known host');
+
   console.log('HostManager Tests Passed!');
 }
 

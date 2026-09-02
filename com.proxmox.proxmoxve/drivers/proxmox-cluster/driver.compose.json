@@ -9,6 +9,7 @@
     "measure_vm_count",
     "measure_lxc_count",
     "alarm_connection_fallback",
+    "alarm_cluster_quorum_lost",
     "status_connected_host"
   ],
   "$extends": [
@@ -27,6 +28,21 @@
         "nl": "bv. pve.yourdomain.local of 192.168.1.100"
       },
       "value": ""
+    },
+    {
+      "id": "port",
+      "type": "number",
+      "label": {
+        "en": "API Port",
+        "nl": "API Poort"
+      },
+      "hint": {
+        "en": "Only change this if Proxmox is behind a reverse proxy on a non-default port. Leave at 8006 for a normal setup. This port is used for every connection, including auto-discovered backup nodes.",
+        "nl": "Wijzig dit alleen als Proxmox achter een reverse proxy op een niet-standaard poort draait. Laat op 8006 staan voor een normale opzet. Deze poort wordt gebruikt voor elke verbinding, ook voor automatisch gevonden backup nodes."
+      },
+      "value": 8006,
+      "min": 1,
+      "max": 65535
     },
     {
       "id": "username",

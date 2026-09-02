@@ -34,6 +34,14 @@ class HostManager {
     this.log(`HostManager initialized. Primary: ${primaryHost}, Backups: ${initialHosts.length}`);
   }
 
+  // Feed a newly-discovered backup host in live so it's a fallback candidate
+  // immediately, instead of waiting for a device restart to pick it up from settings.
+  registerHost(host) {
+    if (!host || this.hosts.has(host)) return;
+    this.updateHostStatus(host, true, 0);
+    this.log(`Registered new backup host: ${host}`);
+  }
+
   setPrimaryHost(host) {
     this.primaryHost = host;
     // Reset circuit breaker for new primary to ensure we try it

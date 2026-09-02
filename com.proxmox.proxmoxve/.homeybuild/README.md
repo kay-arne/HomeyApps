@@ -7,11 +7,12 @@ Control and monitor your Proxmox VE cluster directly from Homey. This app provid
 
 ## ⚡ Key Features
 
-*   **Cluster & Node Monitoring**: Real-time CPU, Memory, and Active VM/LXC counts per node.
-*   **Virtual Control**: Start, Stop, and Shutdown VMs and Containers via Flows.
-*   **Smart Automation**: Trigger flows based on VM running state.
+*   **Cluster & Node Monitoring**: Real-time CPU, Memory, Disk, and Active VM/LXC counts per node, plus cluster quorum status.
+*   **Virtual Control**: Start, Stop, Shutdown, Reboot, and Migrate VMs and Containers via Flows.
+*   **Per-VM/Container Devices**: Optionally pair individual VMs/Containers as their own Homey devices, with an on/off tile and live CPU/Memory sensors.
+*   **Smart Automation**: Flow triggers for VM start/stop, node online/offline, fallback engaged/restored, cluster quorum lost/restored, and CPU/Memory usage thresholds - not just conditions to poll.
 *   **Robust Failover**: Automatically switches to backup nodes if the primary host is down, ensuring your automations never fail.
-*   **Auto-Discovery**: Automatically detects and adds cluster nodes as devices.
+*   **Auto-Discovery**: Automatically detects and adds cluster nodes (and, optionally, VMs/Containers) as devices.
 
 ## 🚀 Quick Start
 
@@ -35,6 +36,7 @@ Control and monitor your Proxmox VE cluster directly from Homey. This app provid
 *   **Polling Interval**: Configurable (default: 5m for Cluster, 1m for Nodes).
 *   **SSL**: Supports self-signed certificates (enable in Device Settings).
 *   **Failover**: "Backup Node IPs" are auto-learned by the app. No manual config needed.
+*   **Reverse Proxy / Non-default Port**: If Proxmox is reachable behind a reverse proxy on a port other than 8006, set it in the optional Port field (pairing or Device Settings). This port is used for every connection, including auto-discovered backup nodes.
 
 ## ❓ Troubleshooting
 

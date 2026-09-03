@@ -58,5 +58,8 @@
   },
   "1.2.1": {
     "en": "Widget fixes: much smaller preview images, and a diagnostic build to pin down device selection in widgets."
+  },
+  "1.2.2": {
+    "en": "Restored the default widget preview images (the smaller custom placeholders didn't look good)."
   }
 }

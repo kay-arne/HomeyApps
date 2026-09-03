@@ -70,5 +70,8 @@
   },
   "1.2.5": {
     "en": "Added Snapshot Create/Rollback, Backup VM/Container (vzdump), bulk Start/Shutdown all VMs/Containers on a Node, and new VM/Container metrics (Uptime, Network In/Out)."
+  },
+  "1.2.6": {
+    "en": "VM/Container icons now match Proxmox VE's own web UI (Font Awesome's desktop/cube icons), including the Proxmox VM/Container driver icon which previously reused the generic app logo."
   }
 }

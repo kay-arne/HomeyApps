@@ -204,27 +204,43 @@ module.exports = class ProxmoxNodeDevice extends Homey.Device {
   // So "force stop" is repurposed to what actually is a valid, useful force action at the node
   // level: immediately killing every running VM/Container on this node.
   async forceStopAllVms() {
+    return this._runBulkVmAction('stop', (r) => r.status === 'running', 'force-stopping', 'force-stop');
+  }
+
+  async startAllVms() {
+    return this._runBulkVmAction('start', (r) => r.status !== 'running', 'starting', 'start');
+  }
+
+  async shutdownAllVms() {
+    return this._runBulkVmAction('shutdown', (r) => r.status === 'running', 'shutting down', 'shut down');
+  }
+
+  // Shared by forceStopAllVms/startAllVms/shutdownAllVms above: finds every VM/Container on
+  // this node matching `statusFilter` and runs `action` on each in parallel.
+  // `presentTense`/`pastTense` are just for log/error message wording (e.g. "shutting down" /
+  // "shut down" - English verbs don't conjugate predictably enough to derive one from the other).
+  async _runBulkVmAction(action, statusFilter, presentTense, pastTense) {
     const nodeName = this.getData().id;
     const cluster = await this._getClusterDevice();
 
     const res = await cluster._executeApiCallWithFallback('/api2/json/cluster/resources', { skipCache: true });
     const targets = (res?.data || []).filter(
-      (r) => r.node === nodeName && r.status === 'running' && (r.type === 'qemu' || r.type === 'lxc'),
+      (r) => r.node === nodeName && (r.type === 'qemu' || r.type === 'lxc') && statusFilter(r),
     );
 
     if (targets.length === 0) {
-      this.log(`No running VMs/Containers to force-stop on node ${nodeName}`);
+      this.log(`No VMs/Containers to ${pastTense} on node ${nodeName}`);
       return;
     }
 
-    this.log(`Force-stopping ${targets.length} VM(s)/Container(s) on node ${nodeName}`);
+    this.log(`${presentTense[0].toUpperCase()}${presentTense.slice(1)} ${targets.length} VM(s)/Container(s) on node ${nodeName}`);
     const results = await Promise.allSettled(
-      targets.map((r) => cluster._runVmAction(r.vmid, r.type, 'stop')),
+      targets.map((r) => cluster._runVmAction(r.vmid, r.type, action)),
     );
 
     const failed = results.filter((r) => r.status === 'rejected');
     if (failed.length > 0) {
-      throw new Error(`Failed to force-stop ${failed.length}/${targets.length} VM(s)/Container(s) on ${nodeName}: ${failed[0].reason?.message}`);
+      throw new Error(`Failed to ${pastTense} ${failed.length}/${targets.length} VM(s)/Container(s) on ${nodeName}: ${failed[0].reason?.message}`);
     }
 
     this._createManagedTimeout(() => this.updateNodeStatus().catch(this.error), 2000);

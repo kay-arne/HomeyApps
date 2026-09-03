@@ -20,23 +20,10 @@ module.exports = {
 
     // Storage usage is a bonus on top of the core status - don't fail the whole widget if
     // this part errors (e.g. cluster momentarily unreachable but capability values are cached).
+    // Not skipCache/refreshCache internally: reuses the cluster device's normal response cache,
+    // so widget polling doesn't add extra load on top of the app's own regular polling.
     try {
-      // Not skipCache/refreshCache: reuses the cluster device's normal response cache, so
-      // widget polling doesn't add extra load on top of the app's own regular polling.
-      const res = await device._executeApiCallWithFallback('/api2/json/cluster/resources');
-      if (Array.isArray(res?.data)) {
-        const seen = new Set();
-        result.storages = res.data
-          .filter((r) => r.type === 'storage' && r.status === 'available' && r.maxdisk > 0)
-          .filter((r) => (seen.has(r.storage) ? false : seen.add(r.storage)))
-          .map((r) => ({
-            id: r.storage,
-            usedPct: Math.round((r.disk / r.maxdisk) * 1000) / 10,
-            usedBytes: r.disk,
-            totalBytes: r.maxdisk,
-          }))
-          .sort((a, b) => b.usedPct - a.usedPct);
-      }
+      result.storages = await device._getStoragePools();
     } catch (e) {
       // Leave result.storages empty
     }

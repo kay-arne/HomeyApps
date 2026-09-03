@@ -24,6 +24,28 @@
         "en": "Reboot Node",
         "nl": "Node Herstarten"
       }
+    },
+    {
+      "id": "start_all_vms",
+      "title": {
+        "en": "Start all VMs/Containers on Node",
+        "nl": "Start alle VM's/Containers op Node"
+      },
+      "hint": {
+        "en": "Starts every stopped VM/Container on this node.",
+        "nl": "Start elke gestopte VM/Container op deze node."
+      }
+    },
+    {
+      "id": "shutdown_all_vms",
+      "title": {
+        "en": "Shutdown all VMs/Containers on Node (Graceful)",
+        "nl": "Schakel alle VM's/Containers op Node uit (Graceful)"
+      },
+      "hint": {
+        "en": "Gracefully shuts down every running VM/Container on this node.",
+        "nl": "Schakelt elke draaiende VM/Container op deze node netjes uit."
+      }
     }
   ],
   "triggers": [

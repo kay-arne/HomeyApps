@@ -1,0 +1,15 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Network In (Total)",
+    "nl": "Netwerk In (Totaal)"
+  },
+  "getable": true,
+  "setable": false,
+  "units": "GB",
+  "decimals": 2,
+  "min": 0,
+  "uiComponent": "sensor",
+  "icon": "assets/network.svg",
+  "insights": true
+}

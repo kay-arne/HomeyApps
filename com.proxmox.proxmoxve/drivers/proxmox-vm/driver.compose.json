@@ -7,7 +7,10 @@
   "capabilities": [
     "onoff",
     "measure_cpu_usage_perc",
-    "measure_memory_usage_perc"
+    "measure_memory_usage_perc",
+    "measure_uptime",
+    "measure_network_in",
+    "measure_network_out"
   ],
   "$extends": [
     "defaults"

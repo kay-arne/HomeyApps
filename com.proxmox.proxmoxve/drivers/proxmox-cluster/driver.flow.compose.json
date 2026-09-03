@@ -140,6 +140,134 @@
           }
         }
       ]
+    },
+    {
+      "id": "create_snapshot",
+      "title": {
+        "en": "Create Snapshot",
+        "nl": "Snapshot Maken"
+      },
+      "titleFormatted": {
+        "en": "Create snapshot [[snapshot_name]] of [[target_vm]] [[description]]",
+        "nl": "Maak snapshot [[snapshot_name]] van [[target_vm]] [[description]]"
+      },
+      "args": [
+        {
+          "name": "target_vm",
+          "type": "autocomplete",
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
+        },
+        {
+          "name": "snapshot_name",
+          "type": "text",
+          "title": {
+            "en": "Snapshot Name",
+            "nl": "Snapshotnaam"
+          },
+          "placeholder": {
+            "en": "e.g., before-update",
+            "nl": "bv. voor-update"
+          }
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "title": {
+            "en": "Description (optional)",
+            "nl": "Omschrijving (optioneel)"
+          },
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "rollback_snapshot",
+      "title": {
+        "en": "Rollback to Snapshot",
+        "nl": "Terugzetten naar Snapshot"
+      },
+      "titleFormatted": {
+        "en": "Rollback [[target_vm]] to [[snapshot]]",
+        "nl": "Zet [[target_vm]] terug naar [[snapshot]]"
+      },
+      "hint": {
+        "en": "Discards all changes made since the snapshot was taken. This cannot be undone.",
+        "nl": "Verwijdert alle wijzigingen sinds de snapshot is gemaakt. Dit kan niet ongedaan worden gemaakt."
+      },
+      "args": [
+        {
+          "name": "target_vm",
+          "type": "autocomplete",
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
+        },
+        {
+          "name": "snapshot",
+          "type": "autocomplete",
+          "title": {
+            "en": "Snapshot",
+            "nl": "Snapshot"
+          },
+          "placeholder": {
+            "en": "Select the VM/Container above first...",
+            "nl": "Selecteer eerst de VM/Container hierboven..."
+          }
+        }
+      ]
+    },
+    {
+      "id": "backup_vm",
+      "title": {
+        "en": "Backup VM/Container",
+        "nl": "VM/Container Backuppen"
+      },
+      "titleFormatted": {
+        "en": "Backup [[target_vm]] to [[target_storage]]",
+        "nl": "Backup [[target_vm]] naar [[target_storage]]"
+      },
+      "hint": {
+        "en": "Backups can take a while for large disks - this flow action starts the backup and returns as soon as it is confirmed running, it does not wait for it to finish.",
+        "nl": "Backups kunnen even duren bij grote schijven - deze flow-actie start de backup en geeft terug zodra deze bevestigd draait, en wacht niet tot deze klaar is."
+      },
+      "args": [
+        {
+          "name": "target_vm",
+          "type": "autocomplete",
+          "title": {
+            "en": "VM/Container",
+            "nl": "VM/Container"
+          },
+          "placeholder": {
+            "en": "Type to search...",
+            "nl": "Typ om te zoeken..."
+          }
+        },
+        {
+          "name": "target_storage",
+          "type": "autocomplete",
+          "title": {
+            "en": "Storage",
+            "nl": "Opslag"
+          },
+          "placeholder": {
+            "en": "Type to search for a storage pool...",
+            "nl": "Typ om een opslagpool te zoeken..."
+          }
+        }
+      ]
     }
   ],
   "conditions": [

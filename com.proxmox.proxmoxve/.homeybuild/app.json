@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.proxmox.proxmoxve",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "brandColor": "#D76300",
@@ -512,6 +512,149 @@
         ]
       },
       {
+        "id": "create_snapshot",
+        "title": {
+          "en": "Create Snapshot",
+          "nl": "Snapshot Maken"
+        },
+        "titleFormatted": {
+          "en": "Create snapshot [[snapshot_name]] of [[target_vm]] [[description]]",
+          "nl": "Maak snapshot [[snapshot_name]] van [[target_vm]] [[description]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          },
+          {
+            "name": "snapshot_name",
+            "type": "text",
+            "title": {
+              "en": "Snapshot Name",
+              "nl": "Snapshotnaam"
+            },
+            "placeholder": {
+              "en": "e.g., before-update",
+              "nl": "bv. voor-update"
+            }
+          },
+          {
+            "name": "description",
+            "type": "text",
+            "title": {
+              "en": "Description (optional)",
+              "nl": "Omschrijving (optioneel)"
+            },
+            "required": false
+          }
+        ]
+      },
+      {
+        "id": "rollback_snapshot",
+        "title": {
+          "en": "Rollback to Snapshot",
+          "nl": "Terugzetten naar Snapshot"
+        },
+        "titleFormatted": {
+          "en": "Rollback [[target_vm]] to [[snapshot]]",
+          "nl": "Zet [[target_vm]] terug naar [[snapshot]]"
+        },
+        "hint": {
+          "en": "Discards all changes made since the snapshot was taken. This cannot be undone.",
+          "nl": "Verwijdert alle wijzigingen sinds de snapshot is gemaakt. Dit kan niet ongedaan worden gemaakt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          },
+          {
+            "name": "snapshot",
+            "type": "autocomplete",
+            "title": {
+              "en": "Snapshot",
+              "nl": "Snapshot"
+            },
+            "placeholder": {
+              "en": "Select the VM/Container above first...",
+              "nl": "Selecteer eerst de VM/Container hierboven..."
+            }
+          }
+        ]
+      },
+      {
+        "id": "backup_vm",
+        "title": {
+          "en": "Backup VM/Container",
+          "nl": "VM/Container Backuppen"
+        },
+        "titleFormatted": {
+          "en": "Backup [[target_vm]] to [[target_storage]]",
+          "nl": "Backup [[target_vm]] naar [[target_storage]]"
+        },
+        "hint": {
+          "en": "Backups can take a while for large disks - this flow action starts the backup and returns as soon as it is confirmed running, it does not wait for it to finish.",
+          "nl": "Backups kunnen even duren bij grote schijven - deze flow-actie start de backup en geeft terug zodra deze bevestigd draait, en wacht niet tot deze klaar is."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-cluster"
+          },
+          {
+            "name": "target_vm",
+            "type": "autocomplete",
+            "title": {
+              "en": "VM/Container",
+              "nl": "VM/Container"
+            },
+            "placeholder": {
+              "en": "Type to search...",
+              "nl": "Typ om te zoeken..."
+            }
+          },
+          {
+            "name": "target_storage",
+            "type": "autocomplete",
+            "title": {
+              "en": "Storage",
+              "nl": "Opslag"
+            },
+            "placeholder": {
+              "en": "Type to search for a storage pool...",
+              "nl": "Typ om een opslagpool te zoeken..."
+            }
+          }
+        ]
+      },
+      {
         "id": "shutdown_node",
         "title": {
           "en": "Shutdown Node (Graceful)",
@@ -548,6 +691,42 @@
         "title": {
           "en": "Reboot Node",
           "nl": "Node Herstarten"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          }
+        ]
+      },
+      {
+        "id": "start_all_vms",
+        "title": {
+          "en": "Start all VMs/Containers on Node",
+          "nl": "Start alle VM's/Containers op Node"
+        },
+        "hint": {
+          "en": "Starts every stopped VM/Container on this node.",
+          "nl": "Start elke gestopte VM/Container op deze node."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=proxmox-node"
+          }
+        ]
+      },
+      {
+        "id": "shutdown_all_vms",
+        "title": {
+          "en": "Shutdown all VMs/Containers on Node (Graceful)",
+          "nl": "Schakel alle VM's/Containers op Node uit (Graceful)"
+        },
+        "hint": {
+          "en": "Gracefully shuts down every running VM/Container on this node.",
+          "nl": "Schakelt elke draaiende VM/Container op deze node netjes uit."
         },
         "args": [
           {
@@ -859,7 +1038,10 @@
       "capabilities": [
         "onoff",
         "measure_cpu_usage_perc",
-        "measure_memory_usage_perc"
+        "measure_memory_usage_perc",
+        "measure_uptime",
+        "measure_network_in",
+        "measure_network_out"
       ],
       "settings": [
         {
@@ -1153,6 +1335,36 @@
       "icon": "assets/cpu.svg",
       "insights": true
     },
+    "measure_network_in": {
+      "type": "number",
+      "title": {
+        "en": "Network In (Total)",
+        "nl": "Netwerk In (Totaal)"
+      },
+      "getable": true,
+      "setable": false,
+      "units": "GB",
+      "decimals": 2,
+      "min": 0,
+      "uiComponent": "sensor",
+      "icon": "assets/network.svg",
+      "insights": true
+    },
+    "measure_network_out": {
+      "type": "number",
+      "title": {
+        "en": "Network Out (Total)",
+        "nl": "Netwerk Uit (Totaal)"
+      },
+      "getable": true,
+      "setable": false,
+      "units": "GB",
+      "decimals": 2,
+      "min": 0,
+      "uiComponent": "sensor",
+      "icon": "assets/network.svg",
+      "insights": true
+    },
     "measure_node_count": {
       "type": "number",
       "title": {
@@ -1165,6 +1377,21 @@
       "min": 0,
       "uiComponent": "sensor",
       "icon": "assets/nodes.svg",
+      "insights": true
+    },
+    "measure_uptime": {
+      "type": "number",
+      "title": {
+        "en": "Uptime",
+        "nl": "Uptime"
+      },
+      "getable": true,
+      "setable": false,
+      "units": "h",
+      "decimals": 1,
+      "min": 0,
+      "uiComponent": "sensor",
+      "icon": "assets/clock.svg",
       "insights": true
     },
     "measure_vm_count": {

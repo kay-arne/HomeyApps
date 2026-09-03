@@ -83,7 +83,7 @@ module.exports = class ProxmoxVmDriver extends Homey.Driver {
               type: r.type,
               serverId: clusterDeviceId,
             },
-            capabilities: ['onoff', 'measure_cpu_usage_perc', 'measure_memory_usage_perc'],
+            capabilities: ['onoff', 'measure_cpu_usage_perc', 'measure_memory_usage_perc', 'measure_uptime', 'measure_network_in', 'measure_network_out'],
             icon: r.type === 'lxc' ? '/assets/container.svg' : '/assets/virtual-machine.svg',
           });
         });

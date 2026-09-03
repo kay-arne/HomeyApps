@@ -151,6 +151,29 @@ module.exports = class ProxmoxNodeDriver extends Homey.Driver {
         this.error(this.homey.__('driver.node_flow_not_found', { s: 'reboot_node' }));
       }
 
+      // Register Start/Shutdown All VMs Actions - device-arg only, no extra args, same shape
+      // as shutdown_node/reboot_node above.
+      const registerBulkVmAction = (cardId, methodName) => {
+        const card = this.homey.flow.getActionCard(cardId);
+        if (card) {
+          card.registerRunListener(async (args) => {
+            const nodeDevice = args.device;
+            if (!nodeDevice || typeof nodeDevice[methodName] !== 'function') {
+              this.error(this.homey.__('driver.node_flow_action_no_context', { s: cardId }));
+              throw new Error(this.homey.__('error.device_context_missing'));
+            }
+            await nodeDevice[methodName]();
+            return true;
+          });
+          this.log(this.homey.__('driver.node_bulk_action_registered', { s: cardId }));
+        } else {
+          this.error(this.homey.__('driver.node_flow_not_found', { s: cardId }));
+        }
+      };
+
+      registerBulkVmAction('start_all_vms', 'startAllVms');
+      registerBulkVmAction('shutdown_all_vms', 'shutdownAllVms');
+
       // Register Node is Online Condition
       const nodeOnlineCondition = this.homey.flow.getConditionCard('node_is_online');
       if (nodeOnlineCondition) {

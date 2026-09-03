@@ -38,6 +38,11 @@ module.exports = class ProxmoxVmDevice extends Homey.Device {
     }
 
     try {
+      // Migration safety for VM/Container devices paired before these capabilities existed.
+      for (const cap of ['measure_uptime', 'measure_network_in', 'measure_network_out']) {
+        if (!this.hasCapability(cap)) await this.addCapability(cap);
+      }
+
       await this.updateVmStatus();
       this.startPolling();
     } catch (error) {
@@ -128,6 +133,18 @@ module.exports = class ProxmoxVmDevice extends Homey.Device {
 
         const memPerc = resource.maxmem > 0 ? parseFloat(((resource.mem / resource.maxmem) * 100).toFixed(1)) : 0;
         await this._updateCapability('measure_memory_usage_perc', memPerc);
+
+        // uptime/netin/netout come from the same cluster/resources entry already fetched
+        // above - no extra API call. netin/netout are cumulative totals since the guest last
+        // started, not an instantaneous rate.
+        const uptimeHours = parseFloat(((resource.uptime || 0) / 3600).toFixed(1));
+        await this._updateCapability('measure_uptime', uptimeHours);
+
+        const netInGb = parseFloat(((resource.netin || 0) / 1024 ** 3).toFixed(2));
+        await this._updateCapability('measure_network_in', netInGb);
+
+        const netOutGb = parseFloat(((resource.netout || 0) / 1024 ** 3).toFixed(2));
+        await this._updateCapability('measure_network_out', netOutGb);
       }
 
       if (!this.getAvailable()) await this.setAvailable();

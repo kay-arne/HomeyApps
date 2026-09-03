@@ -183,21 +183,28 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       registerCard('Action', 'stop_vm', this.onFlowActionStopVm, this.handleFlowArgumentAutocomplete);
       registerCard('Action', 'shutdown_vm', this.onFlowActionShutdownVm, this.handleFlowArgumentAutocomplete);
       registerCard('Action', 'reboot_vm', this.onFlowActionRebootVm, this.handleFlowArgumentAutocomplete);
+      registerCard('Action', 'create_snapshot', this.onFlowActionCreateSnapshot, this.handleFlowArgumentAutocomplete);
       registerCard('Condition', 'vm_is_running', this.onFlowConditionIsRunning, this.handleFlowArgumentAutocomplete);
       registerCard('DeviceTrigger', 'vm_started', this.onFlowTriggerVmState, this.handleFlowArgumentAutocomplete);
       registerCard('DeviceTrigger', 'vm_stopped', this.onFlowTriggerVmState, this.handleFlowArgumentAutocomplete);
 
-      // migrate_vm has a second autocomplete argument (target_node), so it's wired by hand
-      // rather than through the single-arg registerCard helper above.
-      const migrateCard = this.homey.flow.getActionCard('migrate_vm');
-      if (migrateCard) {
-        migrateCard.registerRunListener(this.onFlowActionMigrateVm.bind(this));
-        migrateCard.getArgument('target_vm')?.registerAutocompleteListener(this.handleFlowArgumentAutocomplete.bind(this));
-        migrateCard.getArgument('target_node')?.registerAutocompleteListener(this.handleFlowNodeArgumentAutocomplete.bind(this));
-        this.log(this.homey.__('driver.flow_card_registered', { s: 'action', s2: 'migrate_vm' }));
-      } else {
-        this.error(this.homey.__('driver.flow_card_not_found', { s: 'action', s2: 'migrate_vm' }));
-      }
+      // Cards with a second autocomplete argument are wired by hand rather than through the
+      // single-arg registerCard helper above.
+      const registerCardWithSecondArg = (id, runListener, secondArgName, secondArgListener) => {
+        const card = this.homey.flow.getActionCard(id);
+        if (card) {
+          card.registerRunListener(runListener.bind(this));
+          card.getArgument('target_vm')?.registerAutocompleteListener(this.handleFlowArgumentAutocomplete.bind(this));
+          card.getArgument(secondArgName)?.registerAutocompleteListener(secondArgListener.bind(this));
+          this.log(this.homey.__('driver.flow_card_registered', { s: 'action', s2: id }));
+        } else {
+          this.error(this.homey.__('driver.flow_card_not_found', { s: 'action', s2: id }));
+        }
+      };
+
+      registerCardWithSecondArg('migrate_vm', this.onFlowActionMigrateVm, 'target_node', this.handleFlowNodeArgumentAutocomplete);
+      registerCardWithSecondArg('rollback_snapshot', this.onFlowActionRollbackSnapshot, 'snapshot', this.handleFlowSnapshotArgumentAutocomplete);
+      registerCardWithSecondArg('backup_vm', this.onFlowActionBackupVm, 'target_storage', this.handleFlowStorageArgumentAutocomplete);
 
     } catch (error) {
       this.error(this.homey.__('driver.critical_error_flow'), error);
@@ -256,6 +263,35 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
     }
   }
 
+  // Autocomplete handler for rollback_snapshot's snapshot argument - needs target_vm to
+  // already be selected in the same flow card, returns no results until it is.
+  async handleFlowSnapshotArgumentAutocomplete(query, args) {
+    const clusterDevice = args?.device;
+    if (!clusterDevice || typeof clusterDevice.getSnapshotAutocompleteResults !== 'function') {
+      return [];
+    }
+    try {
+      return await clusterDevice.getSnapshotAutocompleteResults(query, args);
+    } catch (error) {
+      this.error(`Snapshot autocomplete API error for [${clusterDevice.getName()}]:`, error.message);
+      return [];
+    }
+  }
+
+  // Autocomplete handler for backup_vm's target_storage argument.
+  async handleFlowStorageArgumentAutocomplete(query, args) {
+    const clusterDevice = args?.device;
+    if (!clusterDevice || typeof clusterDevice.getStorageAutocompleteResults !== 'function') {
+      return [];
+    }
+    try {
+      return await clusterDevice.getStorageAutocompleteResults(query);
+    } catch (error) {
+      this.error(`Storage autocomplete API error for [${clusterDevice.getName()}]:`, error.message);
+      return [];
+    }
+  }
+
   // --- Flow Run/Condition Listeners (Delegate to the specific device instance) ---
 
   // Generic handler for start/stop/shutdown/reboot actions
@@ -293,6 +329,33 @@ module.exports = class ProxmoxClusterDriver extends Homey.Driver {
       throw new Error(this.homey.__('error.device_context_missing'));
     }
     return clusterDevice.migrateVm(args);
+  }
+
+  async onFlowActionCreateSnapshot(args, state) {
+    const clusterDevice = args.device;
+    if (!clusterDevice || typeof clusterDevice.createSnapshot !== 'function') {
+      this.error(this.homey.__('driver.flow_action_no_context', { s: 'snapshot' }));
+      throw new Error(this.homey.__('error.device_context_missing'));
+    }
+    return clusterDevice.createSnapshot(args);
+  }
+
+  async onFlowActionRollbackSnapshot(args, state) {
+    const clusterDevice = args.device;
+    if (!clusterDevice || typeof clusterDevice.rollbackSnapshot !== 'function') {
+      this.error(this.homey.__('driver.flow_action_no_context', { s: 'rollback' }));
+      throw new Error(this.homey.__('error.device_context_missing'));
+    }
+    return clusterDevice.rollbackSnapshot(args);
+  }
+
+  async onFlowActionBackupVm(args, state) {
+    const clusterDevice = args.device;
+    if (!clusterDevice || typeof clusterDevice.triggerBackup !== 'function') {
+      this.error(this.homey.__('driver.flow_action_no_context', { s: 'backup' }));
+      throw new Error(this.homey.__('error.device_context_missing'));
+    }
+    return clusterDevice.triggerBackup(args);
   }
 
   // Run listener for VM/LXC Is Running Condition

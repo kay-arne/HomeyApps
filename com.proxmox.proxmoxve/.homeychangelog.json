@@ -67,5 +67,8 @@
   },
   "1.2.4": {
     "en": "Removed the homey:manager:api permission added in 1.2.3: widgets now pick their device via a built-in search field instead of Homey's device picker, which needs no extra permission. VM/Container Control is now one VM/Container per widget - add multiple widgets to monitor several."
+  },
+  "1.2.5": {
+    "en": "Added Snapshot Create/Rollback, Backup VM/Container (vzdump), bulk Start/Shutdown all VMs/Containers on a Node, and new VM/Container metrics (Uptime, Network In/Out)."
   }
 }

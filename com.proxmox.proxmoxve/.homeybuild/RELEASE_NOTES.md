@@ -1,5 +1,22 @@
 # Release Notes
 
+## v1.2.5 - Snapshots, Backup Trigger, Bulk Node Actions & Richer VM Metrics
+
+### 🚀 New Features
+- **Snapshot management**: `Create Snapshot` and `Rollback to Snapshot` Flow actions for
+  VMs/Containers (rollback's snapshot picker depends on the VM/Container already being selected
+  in the same card).
+- **Backup trigger**: `Backup VM/Container` Flow action (vzdump), with an autocomplete storage
+  picker. Starts the backup and returns once it's confirmed running - does not wait for it to
+  finish. A backup-status sensor/trigger is a possible follow-up, not included here.
+- **Bulk node actions**: `Start all VMs/Containers on Node` and `Shutdown all VMs/Containers on
+  Node (Graceful)` - the graceful counterparts to the existing force-stop-all action.
+- **Richer VM/Container metrics**: added Uptime, Network In (Total), and Network Out (Total)
+  capabilities to the `proxmox-vm` driver - all computed from data already being polled, no
+  extra API calls. Per-VM disk usage and IP address are not included - neither is reliably
+  available from Proxmox without the QEMU guest agent for VMs (LXC has partial support, but
+  shipping it only for one VM type was inconsistent enough to defer).
+
 ## v1.2.4 - Removed the New Permission
 
 ### 🐛 Fixes

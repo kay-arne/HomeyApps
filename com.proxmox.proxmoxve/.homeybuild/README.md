@@ -8,8 +8,8 @@ Control and monitor your Proxmox VE cluster directly from Homey. This app provid
 ## ⚡ Key Features
 
 *   **Cluster & Node Monitoring**: Real-time CPU, Memory, Disk, and Active VM/LXC counts per node, plus cluster quorum status.
-*   **Virtual Control**: Start, Stop, Shutdown, Reboot, and Migrate VMs and Containers via Flows.
-*   **Per-VM/Container Devices**: Optionally pair individual VMs/Containers as their own Homey devices, with an on/off tile and live CPU/Memory sensors.
+*   **Virtual Control**: Start, Stop, Shutdown, Reboot, Migrate, Snapshot (create/rollback), and Backup VMs and Containers via Flows. Bulk Start/Shutdown for every VM/Container on a node.
+*   **Per-VM/Container Devices**: Optionally pair individual VMs/Containers as their own Homey devices, with an on/off tile and live CPU/Memory/Uptime/Network sensors.
 *   **Smart Automation**: Flow triggers for VM start/stop, node online/offline, fallback engaged/restored, cluster quorum lost/restored, and CPU/Memory usage thresholds - not just conditions to poll.
 *   **Dashboard Widgets** (Homey Pro 2023+): Cluster Overview (counts, fallback/quorum status, storage usage), Node Detail (CPU/Memory/Disk, VM/LXC counts, online status), and VM/Container Control (live start/shutdown buttons) - right on your Homey dashboard.
 *   **Robust Failover**: Automatically switches to backup nodes if the primary host is down, ensuring your automations never fail.

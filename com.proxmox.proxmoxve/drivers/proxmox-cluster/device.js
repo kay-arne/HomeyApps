@@ -561,6 +561,112 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
     return results;
   }
 
+  // === SNAPSHOTS ===
+
+  async createSnapshot(args) {
+    const { vmid, type } = args.target_vm.id;
+    const snapname = args.snapshot_name;
+    if (!vmid || !type) throw new Error(this.homey.__('error.invalid_target'));
+    if (!snapname) throw new Error(this.homey.__('error.invalid_snapshot_name'));
+
+    this.log(this.homey.__('driver.snapshot_log', { s: type, s2: vmid, s3: snapname }));
+
+    const node = await this._findNodeForVm(vmid, type);
+    const endpoint = `/api2/json/nodes/${node}/${type}/${vmid}/snapshot`;
+
+    const params = new URLSearchParams({ snapname });
+    if (args.description) params.set('description', args.description);
+
+    await this._executeApiCallWithFallback(endpoint, { method: 'POST', body: params.toString() });
+  }
+
+  async rollbackSnapshot(args) {
+    const { vmid, type } = args.target_vm.id;
+    const snapname = args.snapshot?.id;
+    if (!vmid || !type) throw new Error(this.homey.__('error.invalid_target'));
+    if (!snapname) throw new Error(this.homey.__('error.invalid_snapshot_name'));
+
+    this.log(this.homey.__('driver.rollback_log', { s: type, s2: vmid, s3: snapname }));
+
+    const node = await this._findNodeForVm(vmid, type);
+    const endpoint = `/api2/json/nodes/${node}/${type}/${vmid}/snapshot/${encodeURIComponent(snapname)}/rollback`;
+
+    await this._executeApiCallWithFallback(endpoint, { method: 'POST' });
+  }
+
+  // Depends on target_vm already being selected in the same flow card, same pattern as
+  // migrate_vm's target_node - returns no results until it is.
+  async getSnapshotAutocompleteResults(query, args) {
+    const results = [];
+    const vmTarget = args?.target_vm?.id;
+    if (!vmTarget?.vmid || !vmTarget?.type) return results;
+
+    try {
+      const node = await this._findNodeForVm(vmTarget.vmid, vmTarget.type);
+      const endpoint = `/api2/json/nodes/${node}/${vmTarget.type}/${vmTarget.vmid}/snapshot`;
+      const res = await this._executeApiCallWithFallback(endpoint);
+      if (Array.isArray(res?.data)) {
+        const q = (query || '').toLowerCase();
+        res.data
+          .filter((s) => s.name !== 'current' && s.name.toLowerCase().includes(q))
+          .forEach((s) => results.push({ name: s.description ? `${s.name} (${s.description})` : s.name, id: s.name }));
+      }
+    } catch (e) {
+      this.error(this.homey.__('driver.autocomplete_failed'), e);
+    }
+    return results;
+  }
+
+  // === BACKUP ===
+
+  async triggerBackup(args) {
+    const { vmid, type } = args.target_vm.id;
+    const storage = args.target_storage?.id;
+    if (!vmid || !type) throw new Error(this.homey.__('error.invalid_target'));
+    if (!storage) throw new Error(this.homey.__('error.invalid_storage_target'));
+
+    this.log(this.homey.__('driver.backup_log', { s: type, s2: vmid, s3: storage }));
+
+    const node = await this._findNodeForVm(vmid, type);
+    const endpoint = `/api2/json/nodes/${node}/vzdump`;
+    const params = new URLSearchParams({ vmid: String(vmid), storage });
+
+    // Backups can legitimately take a long time on large disks - use a generous timeout so a
+    // slow backup doesn't get treated as a failed request (the task itself keeps running on
+    // Proxmox regardless; this only affects how long Homey waits for this API call to return).
+    await this._executeApiCallWithFallback(endpoint, { method: 'POST', body: params.toString(), timeout: 60000 });
+  }
+
+  async getStorageAutocompleteResults(query) {
+    const q = (query || '').toLowerCase();
+    try {
+      const storages = await this._getStoragePools();
+      return storages
+        .filter((s) => s.id.toLowerCase().includes(q))
+        .map((s) => ({ name: s.id, id: s.id }));
+    } catch (e) {
+      this.error(this.homey.__('driver.autocomplete_failed'), e);
+      return [];
+    }
+  }
+
+  // Shared by getStorageAutocompleteResults() above and the Cluster Overview widget
+  // (widgets/cluster-overview/api.js), which shows per-datastore usage bars.
+  async _getStoragePools() {
+    const res = await this._executeApiCallWithFallback('/api2/json/cluster/resources');
+    const seen = new Set();
+    return (res?.data || [])
+      .filter((r) => r.type === 'storage' && r.status === 'available' && r.maxdisk > 0)
+      .filter((r) => (seen.has(r.storage) ? false : seen.add(r.storage)))
+      .map((r) => ({
+        id: r.storage,
+        usedPct: Math.round((r.disk / r.maxdisk) * 1000) / 10,
+        usedBytes: r.disk,
+        totalBytes: r.maxdisk,
+      }))
+      .sort((a, b) => b.usedPct - a.usedPct);
+  }
+
   async _findNodeForVm(vmid, type, { skipShortCache = false } = {}) {
     const key = `${type}-${vmid}`;
 

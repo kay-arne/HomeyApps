@@ -4,14 +4,16 @@
     "nl": "Proxmox Cluster Overzicht"
   },
   "height": 280,
-  "devices": {
-    "type": "app",
-    "singular": true,
-    "filter": {
-      "capabilities": "measure_node_count"
+  "settings": [
+    {
+      "id": "device",
+      "type": "autocomplete",
+      "title": {
+        "en": "Cluster",
+        "nl": "Cluster"
+      }
     }
-  },
-  "settings": [],
+  ],
   "api": {
     "getStatus": {
       "method": "GET",

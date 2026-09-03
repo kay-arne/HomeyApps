@@ -124,8 +124,7 @@
 
       function onHomeyReady(Homey) {
         Homey.ready();
-        const ids = Homey.getDeviceIds();
-        deviceId = ids && ids[0];
+        deviceId = Homey.getSettings().device?.id;
         refresh();
         setInterval(refresh, 15000);
       }

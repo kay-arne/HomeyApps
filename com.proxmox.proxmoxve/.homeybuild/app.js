@@ -1,7 +1,6 @@
 'use strict';
 
 const Homey = require('homey');
-const { HomeyAPI } = require('homey-api');
 
 module.exports = class ProxmoxVeApp extends Homey.App {
 
@@ -19,16 +18,35 @@ module.exports = class ProxmoxVeApp extends Homey.App {
       throw error; // Re-throw to prevent app from starting with errors
     }
 
-    // Used by widgets to resolve a Homey.getDeviceIds() selection (a platform-wide device ID,
-    // distinct from this app's own pairing `data.id`) into live device/capability data. Not
-    // required for core driver/device functionality, so a failure here shouldn't break the app.
-    try {
-      this.homeyApi = await HomeyAPI.createAppAPI({ homey: this.homey });
-      this.log('Homey Web API initialized (for widgets)');
-    } catch (error) {
-      this.error('Failed to initialize Homey Web API (widgets will be unavailable):', error);
-      this.homeyApi = null;
-    }
+    this._registerWidgetDevicePickers();
+  }
+
+  // Widgets pick a device via a custom "autocomplete" setting rather than Homey's native
+  // "devices" picker. The native picker's Homey.getDeviceIds() returns a platform-wide device
+  // ID - a completely different, unrelated ID space from this app's own pairing `data.id`
+  // (confirmed by testing on a real Homey) - and translating that back would need the broad
+  // homey:manager:api permission plus the Homey Web API. With our own autocomplete listener, we
+  // control the returned value ourselves, so it can just be our own data.id directly,
+  // resolvable the normal way via homey.drivers - no extra permission needed.
+  _registerWidgetDevicePickers() {
+    const registerDevicePicker = (widgetId, driverId) => {
+      try {
+        const widget = this.homey.dashboards.getWidget(widgetId);
+        widget.registerSettingAutocompleteListener('device', async (query) => {
+          const q = (query || '').toLowerCase();
+          return this.homey.drivers.getDriver(driverId).getDevices()
+            .filter((d) => d.getName().toLowerCase().includes(q))
+            .map((d) => ({ name: d.getName(), id: d.getData().id }));
+        });
+        this.log(`Registered device picker for widget '${widgetId}'`);
+      } catch (error) {
+        this.error(`Failed to register device picker for widget '${widgetId}':`, error);
+      }
+    };
+
+    registerDevicePicker('cluster-overview', 'proxmox-cluster');
+    registerDevicePicker('node-detail', 'proxmox-node');
+    registerDevicePicker('vm-control', 'proxmox-vm');
   }
 
   // Optional: Handle app-level events

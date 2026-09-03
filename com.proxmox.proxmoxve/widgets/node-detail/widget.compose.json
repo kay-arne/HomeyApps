@@ -4,14 +4,16 @@
     "nl": "Proxmox Node Detail"
   },
   "height": 260,
-  "devices": {
-    "type": "app",
-    "singular": true,
-    "filter": {
-      "capabilities": "alarm_node_status"
+  "settings": [
+    {
+      "id": "device",
+      "type": "autocomplete",
+      "title": {
+        "en": "Node",
+        "nl": "Node"
+      }
     }
-  },
-  "settings": [],
+  ],
   "api": {
     "getStatus": {
       "method": "GET",

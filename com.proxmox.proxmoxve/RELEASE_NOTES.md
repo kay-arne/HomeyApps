@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.2.4 - Removed the New Permission
+
+### 🐛 Fixes
+- **Removed the `homey:manager:api` permission** added in 1.2.3. Widgets now pick their device
+  via a custom search field (a widget "autocomplete" setting, backed by this app's own device
+  list) instead of Homey's built-in device picker - the built-in picker is what forced the Web
+  API detour in the first place, since it hands back a platform-wide device ID this app has no
+  permission-free way to resolve. The custom picker returns our own device ID directly, so no
+  extra permission is needed at all, and the `homey-api` dependency is gone again.
+- **VM/Container Control is now single-device**: since the custom picker (unlike Homey's native
+  one) doesn't support multi-select, each widget now shows and controls exactly one VM/Container.
+  Add multiple widgets to your dashboard to monitor/control several - a more typical dashboard
+  pattern anyway.
+
 ## v1.2.3 - Widgets Fixed (Homey Web API)
 
 ### 🐛 Fixes

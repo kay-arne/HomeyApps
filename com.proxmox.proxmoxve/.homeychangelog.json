@@ -64,5 +64,8 @@
   },
   "1.2.3": {
     "en": "Fixed widgets not finding devices: they now use the Homey Web API to resolve devices, which requires a new permission. Widget device selection, live data, and VM/Container start-stop buttons should now work correctly."
+  },
+  "1.2.4": {
+    "en": "Removed the homey:manager:api permission added in 1.2.3: widgets now pick their device via a built-in search field instead of Homey's device picker, which needs no extra permission. VM/Container Control is now one VM/Container per widget - add multiple widgets to monitor several."
   }
 }

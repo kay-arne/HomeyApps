@@ -3,23 +3,25 @@
     "en": "Proxmox VM/Container Control",
     "nl": "Proxmox VM/Container Bediening"
   },
-  "height": 220,
-  "devices": {
-    "type": "app",
-    "singular": false,
-    "filter": {
-      "capabilities": "onoff"
+  "height": 160,
+  "settings": [
+    {
+      "id": "device",
+      "type": "autocomplete",
+      "title": {
+        "en": "VM/Container",
+        "nl": "VM/Container"
+      }
     }
-  },
-  "settings": [],
+  ],
   "api": {
-    "getStates": {
+    "getStatus": {
       "method": "GET",
-      "path": "/"
+      "path": "/status"
     },
     "setState": {
       "method": "POST",
-      "path": "/:id"
+      "path": "/state"
     }
   }
 }

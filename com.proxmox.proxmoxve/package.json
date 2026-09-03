@@ -1,6 +1,6 @@
 {
   "name": "com.proxmox.proxmoxve",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "main": "app.js",
   "scripts": {
     "lint": "eslint --ext .js,.ts --ignore-path .gitignore ."

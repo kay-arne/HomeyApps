@@ -46,6 +46,23 @@
         opacity: 0.5;
         cursor: default;
       }
+      .header-row {
+        margin-bottom: var(--homey-su-3);
+      }
+      .metric-row {
+        margin-bottom: var(--homey-su-2);
+      }
+      .metric-label-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .metric-graph {
+        width: 100%;
+        height: 28px;
+        display: block;
+        margin-top: 2px;
+      }
       .empty {
         padding: var(--homey-su-2) 0;
       }
@@ -61,6 +78,62 @@
       let deviceId = null;
       let busy = false;
 
+      // Widgets have no access to historical data from the app - graphs are built up client-side
+      // from a rolling window of live refreshes for as long as this widget instance stays open.
+      const HISTORY_LEN = 20; // ~5 minutes at the 15s refresh interval below
+      const history = { cpu: [], mem: [], net: [] };
+      let prevNet = null; // { total, ts } - previous cumulative netin+netout sample, to derive a rate
+
+      function sparkline(values, opts) {
+        opts = opts || {};
+        const width = 100;
+        const height = 28;
+        const color = opts.color || 'var(--homey-text-color-blue)';
+        const clean = values.map((v) => (v == null ? 0 : v));
+
+        if (clean.length < 2) {
+          return `<svg class="metric-graph" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"></svg>`;
+        }
+
+        const lo = opts.min != null ? opts.min : Math.min(...clean);
+        const hi = opts.max != null ? opts.max : Math.max(...clean);
+        const range = (hi - lo) || 1;
+        const stepX = width / (clean.length - 1);
+        const points = clean.map((v, i) => {
+          const x = i * stepX;
+          const y = height - ((v - lo) / range) * (height - 2) - 1;
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+
+        return `<svg class="metric-graph" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+          <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5"
+            vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>`;
+      }
+
+      function pushHistory(arr, value) {
+        arr.push(value);
+        if (arr.length > HISTORY_LEN) arr.shift();
+      }
+
+      function formatRate(bytesPerSec) {
+        if (bytesPerSec == null) return '-';
+        if (bytesPerSec < 1024) return `${bytesPerSec.toFixed(0)} B/s`;
+        if (bytesPerSec < 1024 ** 2) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+        return `${(bytesPerSec / 1024 ** 2).toFixed(1)} MB/s`;
+      }
+
+      function metricGraphRow(label, valueText, values, opts) {
+        return `
+          <div class="metric-row">
+            <div class="metric-label-row">
+              <span class="homey-text-small">${label}</span>
+              <span class="homey-text-small-light">${valueText}</span>
+            </div>
+            ${sparkline(values, opts)}
+          </div>`;
+      }
+
       function render(item) {
         const content = document.getElementById('content');
 
@@ -71,21 +144,43 @@
 
         const statusClass = item.running ? 'status-running' : 'status-stopped';
         const label = busy ? '…' : (item.running ? 'Shutdown' : 'Start');
-        const detail = item.running && item.cpuPerc != null
-          ? `${item.cpuPerc}% CPU · ${item.memPerc}% Mem`
-          : (item.running ? 'Running' : 'Stopped');
+
+        let netRate = null;
+        if (item.netInBytes != null && item.netOutBytes != null) {
+          const total = item.netInBytes + item.netOutBytes;
+          if (prevNet && total >= prevNet.total) {
+            const elapsedSec = (Date.now() - prevNet.ts) / 1000;
+            if (elapsedSec > 0) netRate = (total - prevNet.total) / elapsedSec;
+          }
+          prevNet = { total, ts: Date.now() };
+        }
+
+        if (item.running) {
+          pushHistory(history.cpu, item.cpuPerc);
+          pushHistory(history.mem, item.memPerc);
+          if (netRate != null) pushHistory(history.net, netRate);
+        } else {
+          // Stopped - don't keep graphing stale last-known values or a fabricated 0 network rate
+          history.cpu.length = 0;
+          history.mem.length = 0;
+          history.net.length = 0;
+          prevNet = null;
+        }
 
         content.innerHTML = `
-          <div class="row">
+          <div class="row header-row">
             <div class="vm-info">
               <span class="status-dot ${statusClass}"></span>
-              <div>
-                <div class="vm-name homey-text-small">${item.name}</div>
-                <div class="homey-text-small-light">${detail}</div>
-              </div>
+              <span class="vm-name homey-text-small">${item.name}</span>
             </div>
             <button class="vm-toggle" id="toggleBtn" ${busy ? 'disabled' : ''}>${label}</button>
-          </div>`;
+          </div>
+          ${item.running ? `
+            ${metricGraphRow('CPU', `${item.cpuPerc ?? 0}%`, history.cpu, { color: 'var(--homey-text-color-blue)', min: 0, max: 100 })}
+            ${metricGraphRow('Memory', `${item.memPerc ?? 0}%`, history.mem, { color: 'var(--homey-text-color-green)', min: 0, max: 100 })}
+            ${metricGraphRow('Network', formatRate(netRate), history.net, { color: 'var(--homey-text-color-orange)', min: 0 })}
+          ` : '<p class="homey-text-small-light empty">Stopped</p>'}
+        `;
 
         document.getElementById('toggleBtn').addEventListener('click', () => onToggleClick(item.running));
       }

@@ -3,7 +3,7 @@
     "en": "Proxmox Node Detail",
     "nl": "Proxmox Node Detail"
   },
-  "height": 260,
+  "height": 300,
   "settings": [
     {
       "id": "device",

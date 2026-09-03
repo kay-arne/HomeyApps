@@ -3,7 +3,7 @@
     "en": "Proxmox VM/Container Control",
     "nl": "Proxmox VM/Container Bediening"
   },
-  "height": 160,
+  "height": 300,
   "settings": [
     {
       "id": "device",

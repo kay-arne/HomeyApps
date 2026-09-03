@@ -1,5 +1,20 @@
 # Release Notes
 
+## v1.2.8 - Live Graphs in the Node Detail & VM/Container Control Widgets
+
+### 🚀 New Features
+- **Node Detail widget**: CPU and Memory are now live sparkline graphs (rolling ~5-minute
+  window, built up while the widget is on screen) instead of static bars, so you can see recent
+  trends at a glance. Disk usage stays a bar - it doesn't move quickly enough for a graph to add
+  much.
+- **VM/Container Control widget**: added CPU, Memory, and Network throughput graphs below the
+  existing start/shutdown control. Network throughput is computed client-side from the raw
+  cumulative byte counters (the existing Network In/Out sensor is rounded to whole GB, too coarse
+  for a live rate at this refresh interval) - shown as a combined in+out rate (B/s - MB/s,
+  auto-scaled).
+- Both widgets clear their graphs when the device goes offline/stops, rather than showing a flat
+  line of stale data.
+
 ## v1.2.7 - VM/Container Icon Fix & LXC Disk Usage
 
 ### 🐛 Fixes

@@ -76,5 +76,8 @@
   },
   "1.2.7": {
     "en": "Fixed a bug where VM and Container devices always showed the same icon (the per-device icon path was wrong). New Container devices now correctly show the Container icon, and gained a Disk Usage sensor (LXC-only - not reliably available for VMs without the guest agent)."
+  },
+  "1.2.8": {
+    "en": "Node Detail and VM/Container Control widgets now show live CPU/Memory graphs (and Network throughput for VMs/Containers) instead of static bars, so you can see recent trends at a glance."
   }
 }

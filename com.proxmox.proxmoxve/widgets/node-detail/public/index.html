@@ -1,0 +1,134 @@
+<html>
+  <head>
+    <style>
+      body {
+        margin: 0;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .header-row {
+        margin-bottom: var(--homey-su-3);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px var(--homey-su-2);
+        border-radius: var(--homey-su-2);
+        font-size: var(--homey-font-size-small);
+        border: 1px solid var(--homey-line-color);
+        white-space: nowrap;
+      }
+      .badge-warn {
+        color: var(--homey-text-color-orange);
+        border-color: var(--homey-text-color-orange);
+      }
+      .badge-ok {
+        color: var(--homey-text-color-green);
+        border-color: var(--homey-text-color-green);
+      }
+      .metric-row {
+        margin-bottom: var(--homey-su-2);
+      }
+      .metric-bar-bg {
+        height: 8px;
+        border-radius: 4px;
+        background: var(--homey-line-color-light);
+        overflow: hidden;
+        margin-top: 2px;
+      }
+      .metric-bar-fill {
+        height: 100%;
+      }
+      .fill-cpu {
+        background: var(--homey-text-color-blue);
+      }
+      .fill-mem {
+        background: var(--homey-text-color-green);
+      }
+      .fill-disk {
+        background: var(--homey-text-color-orange);
+      }
+      .counts-row {
+        margin-top: var(--homey-su-3);
+        display: flex;
+        gap: var(--homey-su-4);
+      }
+      .empty {
+        padding: var(--homey-su-4) 0;
+      }
+    </style>
+  </head>
+
+  <body class="homey-widget">
+    <div id="content">
+      <p class="homey-text-small-light homey-text-align-center">Loading…</p>
+    </div>
+
+    <script type="text/javascript">
+      let deviceId = null;
+
+      function metricRow(label, value, fillClass) {
+        const pct = value == null ? 0 : Math.max(0, Math.min(100, value));
+        const display = value == null ? '-' : `${value}%`;
+        return `
+          <div class="metric-row">
+            <div class="row">
+              <span class="homey-text-small">${label}</span>
+              <span class="homey-text-small-light">${display}</span>
+            </div>
+            <div class="metric-bar-bg"><div class="metric-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
+          </div>`;
+      }
+
+      function render(data) {
+        const content = document.getElementById('content');
+
+        if (!data.available) {
+          content.innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">Node unavailable</p>';
+          return;
+        }
+
+        const badge = data.offline
+          ? '<span class="badge badge-warn">Offline</span>'
+          : '<span class="badge badge-ok">Online</span>';
+
+        content.innerHTML = `
+          <div class="row header-row">
+            <span class="homey-text-medium">${data.name}</span>
+            ${badge}
+          </div>
+          ${metricRow('CPU', data.cpuPerc, 'fill-cpu')}
+          ${metricRow('Memory', data.memPerc, 'fill-mem')}
+          ${metricRow('Disk', data.diskPerc, 'fill-disk')}
+          <div class="counts-row homey-text-small-light">
+            <span>${data.vmCount ?? '-'} VMs</span>
+            <span>${data.lxcCount ?? '-'} LXCs</span>
+          </div>
+        `;
+      }
+
+      function refresh() {
+        if (!deviceId) {
+          document.getElementById('content').innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">No node device selected. Configure this widget to pick one.</p>';
+          return;
+        }
+        Homey.api('GET', '/status?deviceId=' + encodeURIComponent(deviceId), {})
+          .then(render)
+          .catch((err) => {
+            document.getElementById('content').innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">' + (err && err.message ? err.message : 'Error loading data') + '</p>';
+          });
+      }
+
+      function onHomeyReady(Homey) {
+        Homey.ready();
+        const ids = Homey.getDeviceIds();
+        deviceId = ids && ids[0];
+        refresh();
+        setInterval(refresh, 15000);
+      }
+    </script>
+  </body>
+</html>

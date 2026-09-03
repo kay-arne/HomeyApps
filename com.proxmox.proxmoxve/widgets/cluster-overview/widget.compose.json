@@ -1,0 +1,21 @@
+{
+  "name": {
+    "en": "Proxmox Cluster Overview",
+    "nl": "Proxmox Cluster Overzicht"
+  },
+  "height": 280,
+  "devices": {
+    "type": "app",
+    "singular": true,
+    "filter": {
+      "capabilities": "measure_node_count"
+    }
+  },
+  "settings": [],
+  "api": {
+    "getStatus": {
+      "method": "GET",
+      "path": "/status"
+    }
+  }
+}

@@ -1,0 +1,152 @@
+<html>
+  <head>
+    <style>
+      body {
+        margin: 0;
+      }
+      .vm-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--homey-su-2) 0;
+        border-bottom: 1px solid var(--homey-line-color-light);
+      }
+      .vm-row:last-child {
+        border-bottom: none;
+      }
+      .vm-info {
+        display: flex;
+        align-items: center;
+        gap: var(--homey-su-2);
+        min-width: 0;
+      }
+      .vm-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .status-running {
+        background: var(--homey-text-color-green);
+      }
+      .status-stopped {
+        background: var(--homey-line-color);
+      }
+      .vm-toggle {
+        border: 1px solid var(--homey-line-color);
+        border-radius: var(--homey-su-2);
+        background: transparent;
+        color: var(--homey-text-color);
+        font-size: var(--homey-font-size-small);
+        padding: 4px var(--homey-su-2);
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .vm-toggle:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .empty {
+        padding: var(--homey-su-4) 0;
+      }
+    </style>
+  </head>
+
+  <body class="homey-widget">
+    <div id="content">
+      <p class="homey-text-small-light homey-text-align-center">Loading…</p>
+    </div>
+
+    <script type="text/javascript">
+      let deviceIds = [];
+      const pending = new Set();
+
+      function render(items) {
+        const content = document.getElementById('content');
+
+        if (!items.length) {
+          content.innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">No VMs/Containers selected. Configure this widget to pick some.</p>';
+          return;
+        }
+
+        content.innerHTML = items.map((item) => {
+          if (item.error || !item.available) {
+            return `
+              <div class="vm-row">
+                <div class="vm-info">
+                  <span class="status-dot status-stopped"></span>
+                  <span class="vm-name homey-text-small-light">${item.name} (unavailable)</span>
+                </div>
+              </div>`;
+          }
+
+          const busy = pending.has(item.id);
+          const statusClass = item.running ? 'status-running' : 'status-stopped';
+          const label = busy ? '…' : (item.running ? 'Shutdown' : 'Start');
+          const detail = item.running && item.cpuPerc != null
+            ? `${item.cpuPerc}% CPU · ${item.memPerc}% Mem`
+            : (item.running ? 'Running' : 'Stopped');
+
+          return `
+            <div class="vm-row">
+              <div class="vm-info">
+                <span class="status-dot ${statusClass}"></span>
+                <div>
+                  <div class="vm-name homey-text-small">${item.name}</div>
+                  <div class="homey-text-small-light">${detail}</div>
+                </div>
+              </div>
+              <button class="vm-toggle" data-id="${item.id}" data-action="${item.running ? 'shutdown' : 'start'}" ${busy ? 'disabled' : ''}>${label}</button>
+            </div>`;
+        }).join('');
+
+        content.querySelectorAll('.vm-toggle').forEach((btn) => {
+          btn.addEventListener('click', onToggleClick);
+        });
+      }
+
+      function onToggleClick(e) {
+        const btn = e.currentTarget;
+        const id = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+        pending.add(id);
+        btn.disabled = true;
+        btn.textContent = '…';
+
+        Homey.api('POST', '/' + encodeURIComponent(id), { action })
+          .then(() => {
+            // Give Proxmox a moment before polling the new state
+            setTimeout(refresh, 1500);
+          })
+          .catch(console.error)
+          .finally(() => {
+            pending.delete(id);
+          });
+      }
+
+      function refresh() {
+        if (!deviceIds.length) {
+          render([]);
+          return;
+        }
+        Homey.api('GET', '/?deviceIds=' + encodeURIComponent(deviceIds.join(',')), {})
+          .then(render)
+          .catch((err) => {
+            document.getElementById('content').innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">' + (err && err.message ? err.message : 'Error loading data') + '</p>';
+          });
+      }
+
+      function onHomeyReady(Homey) {
+        Homey.ready();
+        deviceIds = Homey.getDeviceIds() || [];
+        refresh();
+        setInterval(refresh, 15000);
+      }
+    </script>
+  </body>
+</html>

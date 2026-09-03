@@ -1,0 +1,25 @@
+{
+  "name": {
+    "en": "Proxmox VM/Container Control",
+    "nl": "Proxmox VM/Container Bediening"
+  },
+  "height": 220,
+  "devices": {
+    "type": "app",
+    "singular": false,
+    "filter": {
+      "capabilities": "onoff"
+    }
+  },
+  "settings": [],
+  "api": {
+    "getStates": {
+      "method": "GET",
+      "path": "/"
+    },
+    "setState": {
+      "method": "POST",
+      "path": "/:id"
+    }
+  }
+}

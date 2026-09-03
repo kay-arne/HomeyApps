@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.2.0 - Dashboard Widgets
+
+### 🚀 New Features
+- **Dashboard Widgets** (Homey Pro 2023+): three new widgets for the Homey dashboard, separate
+  from device tiles and Flows:
+    - **Proxmox Cluster Overview**: node/VM/LXC counts, connection fallback and cluster quorum
+      status, and per-datastore storage usage bars, for a selected Cluster device.
+    - **Proxmox Node Detail**: CPU/Memory/Disk usage bars, VM/LXC counts, and online/offline
+      status for a selected Node device.
+    - **Proxmox VM/Container Control**: a live list of selected VM/Container devices with
+      running-state and start/shutdown buttons, right on the dashboard.
+  Widgets poll every 15 seconds while visible and reuse the app's existing polling caches, so
+  they don't add extra load on Proxmox beyond normal operation.
+
 ## v1.1.0 - Flow Triggers, New VM Driver & Performance
 
 ### 🚀 New Features

@@ -1,0 +1,21 @@
+{
+  "name": {
+    "en": "Proxmox Node Detail",
+    "nl": "Proxmox Node Detail"
+  },
+  "height": 260,
+  "devices": {
+    "type": "app",
+    "singular": true,
+    "filter": {
+      "capabilities": "alarm_node_status"
+    }
+  },
+  "settings": [],
+  "api": {
+    "getStatus": {
+      "method": "GET",
+      "path": "/status"
+    }
+  }
+}

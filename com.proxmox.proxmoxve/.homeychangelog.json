@@ -52,5 +52,8 @@
   },
   "1.1.0": {
     "en": "Major Update: Added Flow triggers (VM start/stop, node online/offline, fallback, cluster quorum, CPU/memory thresholds), Reboot and Migrate VM/Container actions, a new per-VM/Container device driver, cluster quorum and node disk usage sensors, an optional API port field for reverse proxy setups, connection performance improvements, and fixed the Stop Node (Force) action which previously always failed."
+  },
+  "1.2.0": {
+    "en": "Added Homey dashboard widgets: Cluster Overview (counts, fallback/quorum status, storage usage), Node Detail (CPU/Memory/Disk, VM/LXC counts, online status), and VM/Container Control (live start/shutdown buttons)."
   }
 }

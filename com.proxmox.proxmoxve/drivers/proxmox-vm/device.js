@@ -39,7 +39,12 @@ module.exports = class ProxmoxVmDevice extends Homey.Device {
 
     try {
       // Migration safety for VM/Container devices paired before these capabilities existed.
-      for (const cap of ['measure_uptime', 'measure_network_in', 'measure_network_out']) {
+      const caps = ['measure_uptime', 'measure_network_in', 'measure_network_out'];
+      // Disk usage is only reliably available for LXC containers (see updateVmStatus) - don't
+      // add it to QEMU VM devices, existing or new.
+      if (this.getData().type === 'lxc') caps.push('measure_disk_usage_perc');
+
+      for (const cap of caps) {
         if (!this.hasCapability(cap)) await this.addCapability(cap);
       }
 
@@ -145,6 +150,22 @@ module.exports = class ProxmoxVmDevice extends Homey.Device {
 
         const netOutGb = parseFloat(((resource.netout || 0) / 1024 ** 3).toFixed(2));
         await this._updateCapability('measure_network_out', netOutGb);
+
+        // Actual used disk space isn't in cluster/resources for guests (only the allocated
+        // maxdisk) and isn't reliably available for QEMU without the guest agent - but LXC
+        // reports it directly via a per-container status call, so fetch it for LXC only.
+        if (type === 'lxc' && this.hasCapability('measure_disk_usage_perc')) {
+          try {
+            const statusRes = await cluster._executeApiCallWithFallback(`/api2/json/nodes/${resource.node}/lxc/${vmid}/status/current`);
+            const d = statusRes?.data;
+            if (d?.maxdisk > 0) {
+              const diskPerc = parseFloat(((d.disk / d.maxdisk) * 100).toFixed(1));
+              await this._updateCapability('measure_disk_usage_perc', diskPerc);
+            }
+          } catch (e) {
+            // Leave the last known value rather than failing the whole status update
+          }
+        }
       }
 
       if (!this.getAvailable()) await this.setAvailable();

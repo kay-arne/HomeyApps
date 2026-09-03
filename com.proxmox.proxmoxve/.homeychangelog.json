@@ -73,5 +73,8 @@
   },
   "1.2.6": {
     "en": "VM/Container icons now match Proxmox VE's own web UI (Font Awesome's desktop/cube icons), including the Proxmox VM/Container driver icon which previously reused the generic app logo."
+  },
+  "1.2.7": {
+    "en": "Fixed a bug where VM and Container devices always showed the same icon (the per-device icon path was wrong). New Container devices now correctly show the Container icon, and gained a Disk Usage sensor (LXC-only - not reliably available for VMs without the guest agent)."
   }
 }

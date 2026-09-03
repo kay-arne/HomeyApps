@@ -75,7 +75,7 @@ module.exports = class ProxmoxVmDriver extends Homey.Driver {
       if (Array.isArray(res?.data)) {
         res.data.forEach((r) => {
           if (r.type !== 'qemu' && r.type !== 'lxc') return;
-          discovered.push({
+          const device = {
             name: r.name || `${r.type} ${r.vmid}`,
             data: {
               id: `${r.type}-${r.vmid}-${clusterDeviceId}`,
@@ -84,8 +84,20 @@ module.exports = class ProxmoxVmDriver extends Homey.Driver {
               serverId: clusterDeviceId,
             },
             capabilities: ['onoff', 'measure_cpu_usage_perc', 'measure_memory_usage_perc', 'measure_uptime', 'measure_network_in', 'measure_network_out'],
-            icon: r.type === 'lxc' ? '/assets/container.svg' : '/assets/virtual-machine.svg',
-          });
+          };
+          if (r.type === 'lxc') {
+            // Per-device pairing icon paths are resolved relative to this driver's own
+            // assets/ folder (NOT the top-level app assets/) - qemu devices use the
+            // driver's own default icon.svg (already the VM/desktop icon), lxc devices
+            // override to drivers/proxmox-vm/assets/container.svg.
+            device.icon = 'container.svg';
+            // Actual used disk space is only reliably reported by Proxmox for LXC
+            // containers (via a per-device /status/current call) - QEMU VMs need the guest
+            // agent for this, which isn't assumed to be installed, so this capability is
+            // intentionally LXC-only rather than present-but-always-empty on VM devices too.
+            device.capabilities.push('measure_disk_usage_perc');
+          }
+          discovered.push(device);
         });
       }
     } catch (error) {

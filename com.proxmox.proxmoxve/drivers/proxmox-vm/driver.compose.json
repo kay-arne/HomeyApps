@@ -10,7 +10,8 @@
     "measure_memory_usage_perc",
     "measure_uptime",
     "measure_network_in",
-    "measure_network_out"
+    "measure_network_out",
+    "measure_disk_usage_perc"
   ],
   "$extends": [
     "defaults"

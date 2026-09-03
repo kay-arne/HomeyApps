@@ -1,5 +1,23 @@
 # Release Notes
 
+## v1.2.7 - VM/Container Icon Fix & LXC Disk Usage
+
+### 🐛 Fixes
+- **VM/Container devices all showed the same icon**: the pairing code pointed the per-device
+  icon override at `/assets/container.svg` (the top-level app assets folder), but Homey
+  resolves per-device pairing icons relative to the driver's own `drivers/proxmox-vm/assets/`
+  folder - so the override silently never resolved and every device fell back to the driver's
+  default icon. Fixed by placing `container.svg` inside the driver's own assets folder and
+  referencing it correctly. Only affects newly-paired devices - already-paired VM/Container
+  devices keep whatever icon they got at pairing time (Homey has no way to change a device's
+  icon after pairing); remove and re-add an affected device to pick up the fix.
+
+### 🚀 New Features
+- **LXC-only disk usage sensor**: added `measure_disk_usage_perc` to Container devices
+  specifically (not VMs) - Proxmox reliably reports actual used disk space for LXC containers
+  via a per-container status call, but not for QEMU VMs without the guest agent. Rather than
+  show an always-empty sensor on VM devices, it's only present on Container devices at all.
+
 ## v1.2.5 - Snapshots, Backup Trigger, Bulk Node Actions & Richer VM Metrics
 
 ### 🚀 New Features

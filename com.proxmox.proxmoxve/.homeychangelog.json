@@ -62,7 +62,7 @@
   "1.2.2": {
     "en": "Restored the default widget preview images (the smaller custom placeholders didn't look good)."
   },
-  "1.3.0": {
+  "1.2.3": {
     "en": "Fixed widgets not finding devices: they now use the Homey Web API to resolve devices, which requires a new permission. Widget device selection, live data, and VM/Container start-stop buttons should now work correctly."
   }
 }

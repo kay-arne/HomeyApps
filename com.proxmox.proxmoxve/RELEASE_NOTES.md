@@ -1,6 +1,6 @@
 # Release Notes
 
-## v1.3.0 - Widgets Fixed (Homey Web API)
+## v1.2.3 - Widgets Fixed (Homey Web API)
 
 ### 🐛 Fixes
 - **Widgets couldn't find any device**: on-device testing showed a widget's selected device ID

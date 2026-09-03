@@ -47,6 +47,3 @@ Control and monitor your Proxmox VE cluster directly from Homey. This app provid
 
 ---
 [Report an Issue](https://github.com/kay-arne/HomeyApps/issues) | [Source Code](https://github.com/kay-arne/HomeyApps)
-
-### Credits
-The VM and Container icons are the "desktop" and "cube" icons from [Font Awesome Free](https://fontawesome.com), licensed under [CC BY 4.0](https://fontawesome.com/license/free) - the same icons Proxmox VE's own web UI uses for these resource types.

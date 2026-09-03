@@ -1,5 +1,20 @@
 # Release Notes
 
+## v1.2.9 - Driver Icons Redesigned for App Store Compliance
+
+### 🐛 Fixes
+- **Driver icons redesigned as line drawings**: Homey's [App Store icon guidelines](https://apps.developer.homey.app/app-store/guidelines)
+  require driver icons to be clean vector line drawings (dimension added through angles and line
+  work), not filled silhouettes - a filled icon "will appear as a solid shape... and will not be
+  approved". The Cluster, Node, VM and Container driver icons were solid-filled shapes (two of
+  them borrowed from Font Awesome), so all four were redrawn from scratch as line art: Cluster is
+  three connected nodes, Node is an angled rack server unit, VM is a desktop monitor, and
+  Container is an isometric box.
+- **Node driver had no icon of its own**: it was silently reusing the app's own icon (the Proxmox
+  logo), which the guidelines explicitly disallow ("don't use a driver icon as your app icon").
+  It now has its own dedicated icon like every other driver.
+- Regenerated the small/large/xlarge driver images from the new icons to match.
+
 ## v1.2.8 - Live Graphs in the Node Detail & VM/Container Control Widgets
 
 ### 🚀 New Features

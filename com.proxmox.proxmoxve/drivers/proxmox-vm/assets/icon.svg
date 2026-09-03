@@ -1,5 +1,11 @@
-<!-- "desktop" icon from Font Awesome Free 6.7.2 (https://fontawesome.com), licensed CC BY 4.0.
-     Matches the glyph (fa-desktop, \f108) Proxmox VE's own web UI uses for QEMU VMs. -->
-<svg width="800" height="800" viewBox="0 0 576 512" xmlns="http://www.w3.org/2000/svg">
-<path d="M64 0C28.7 0 0 28.7 0 64L0 352c0 35.3 28.7 64 64 64l176 0-10.7 32L160 448c-17.7 0-32 14.3-32 32s14.3 32 32 32l256 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-69.3 0L336 416l176 0c35.3 0 64-28.7 64-64l0-288c0-35.3-28.7-64-64-64L64 0zM512 64l0 224L64 288 64 64l448 0z" fill="#000000"/>
+<!-- Custom line-art icon (desktop monitor) drawn for the "Proxmox VM/Container" driver's QEMU VM
+     devices, per Homey's App Store icon guidelines (https://apps.developer.homey.app/app-store/guidelines):
+     a clean vector line drawing rather than a filled silhouette. -->
+<svg width="960" height="960" viewBox="0 0 960 960" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#000000" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="144" y="160" width="672" height="440" rx="48" />
+    <rect x="232" y="240" width="496" height="280" rx="24" />
+    <line x1="480" y1="600" x2="480" y2="712" />
+    <line x1="352" y1="760" x2="608" y2="760" />
+  </g>
 </svg>

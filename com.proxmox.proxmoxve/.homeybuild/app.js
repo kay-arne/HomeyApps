@@ -1,6 +1,7 @@
 'use strict';
 
 const Homey = require('homey');
+const { HomeyAPI } = require('homey-api');
 
 module.exports = class ProxmoxVeApp extends Homey.App {
 
@@ -16,6 +17,17 @@ module.exports = class ProxmoxVeApp extends Homey.App {
     } catch (error) {
       this.error('App initialization failed:', error);
       throw error; // Re-throw to prevent app from starting with errors
+    }
+
+    // Used by widgets to resolve a Homey.getDeviceIds() selection (a platform-wide device ID,
+    // distinct from this app's own pairing `data.id`) into live device/capability data. Not
+    // required for core driver/device functionality, so a failure here shouldn't break the app.
+    try {
+      this.homeyApi = await HomeyAPI.createAppAPI({ homey: this.homey });
+      this.log('Homey Web API initialized (for widgets)');
+    } catch (error) {
+      this.error('Failed to initialize Homey Web API (widgets will be unavailable):', error);
+      this.homeyApi = null;
     }
   }
 

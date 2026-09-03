@@ -1,6 +1,6 @@
 'use strict';
 
-const { resolveWidgetDevice } = require('../../lib/widgetHelpers');
+const { resolveWidgetDevice, getCapabilityValue } = require('../../lib/widgetHelpers');
 
 module.exports = {
   async getStates({ homey, query }) {
@@ -8,14 +8,14 @@ module.exports = {
 
     return Promise.all(ids.map(async (id) => {
       try {
-        const device = await resolveWidgetDevice(homey, 'proxmox-vm', id);
+        const device = await resolveWidgetDevice(homey, id);
         return {
           id,
-          name: device.getName(),
-          available: device.getAvailable(),
-          running: device.getCapabilityValue('onoff'),
-          cpuPerc: device.getCapabilityValue('measure_cpu_usage_perc'),
-          memPerc: device.getCapabilityValue('measure_memory_usage_perc'),
+          name: device.name,
+          available: device.available !== false,
+          running: getCapabilityValue(device, 'onoff'),
+          cpuPerc: getCapabilityValue(device, 'measure_cpu_usage_perc'),
+          memPerc: getCapabilityValue(device, 'measure_memory_usage_perc'),
         };
       } catch (e) {
         return {
@@ -26,13 +26,16 @@ module.exports = {
   },
 
   async setState({ homey, params, body }) {
-    const device = await resolveWidgetDevice(homey, 'proxmox-vm', params.id);
-    const { vmid, type, serverId } = device.getData();
+    const device = await resolveWidgetDevice(homey, params.id);
 
-    const cluster = homey.drivers.getDriver('proxmox-cluster').getDevice({ id: serverId });
-    if (!cluster) throw new Error('Cluster device not found');
+    // Goes through the Web API, same as tapping the device's tile in the Homey app - this
+    // triggers ProxmoxVmDevice's own registerCapabilityListener('onoff', ...), which already
+    // handles calling the cluster device's start/shutdown action.
+    await device.setCapabilityValue({
+      capabilityId: 'onoff',
+      value: body.action === 'start',
+    });
 
-    await cluster._runVmAction(vmid, type, body.action === 'start' ? 'start' : 'shutdown');
     return { ok: true };
   },
 };

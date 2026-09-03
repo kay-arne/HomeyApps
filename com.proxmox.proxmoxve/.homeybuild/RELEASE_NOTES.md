@@ -1,5 +1,18 @@
 # Release Notes
 
+## v1.3.0 - Widgets Fixed (Homey Web API)
+
+### 🐛 Fixes
+- **Widgets couldn't find any device**: on-device testing showed a widget's selected device ID
+  (from `Homey.getDeviceIds()`) is a Homey platform-wide UUID, completely separate from this
+  app's own pairing ID that `homey.drivers`/`Driver#getDevice()` matches against - so the v1.2.x
+  widgets could never resolve a device. Widgets now use the Homey Web API (`homey-api`, via
+  `HomeyAPI.createAppAPI()`) instead, which operates in that same platform-wide ID space. Device
+  selection, live data, and the VM/Container Control widget's start/shutdown buttons should now
+  work correctly.
+- **New permission required**: `homey:manager:api`, needed for the Web API above. Only used by
+  the widgets - core device polling and Flow actions are unaffected and don't need it.
+
 ## v1.2.0 - Dashboard Widgets
 
 ### 🚀 New Features

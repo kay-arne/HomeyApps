@@ -55,5 +55,8 @@
   },
   "1.2.0": {
     "en": "Added Homey dashboard widgets: Cluster Overview (counts, fallback/quorum status, storage usage), Node Detail (CPU/Memory/Disk, VM/LXC counts, online status), and VM/Container Control (live start/shutdown buttons)."
+  },
+  "1.2.1": {
+    "en": "Widget fixes: much smaller preview images, and a diagnostic build to pin down device selection in widgets."
   }
 }

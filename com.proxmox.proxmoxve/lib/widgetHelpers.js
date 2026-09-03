@@ -6,7 +6,8 @@
 // pairing `data` object, which is what this app always sets `data.id` to. This covers the
 // most likely case (and the same lookup this app already relies on internally, e.g.
 // ProxmoxNodeDevice using its parent's `data.id` as `serverId`) while failing loudly with a
-// clear, actionable message instead of silently breaking if that assumption turns out wrong.
+// clear, diagnosable message (including the raw IDs on both sides) instead of silently
+// breaking if that assumption turns out wrong.
 async function resolveWidgetDevice(homey, driverId, deviceId) {
   if (!deviceId) throw new Error('No device selected for this widget.');
 
@@ -19,9 +20,12 @@ async function resolveWidgetDevice(homey, driverId, deviceId) {
     // getDevice() throws when no match is found - fall through to the manual scan below.
   }
 
-  const device = driver.getDevices().find((d) => d.getData()?.id === deviceId);
-  if (!device) throw new Error('Selected device not found. Please reselect it in the widget settings.');
-  return device;
+  const devices = driver.getDevices();
+  const device = devices.find((d) => d.getData()?.id === deviceId);
+  if (device) return device;
+
+  const known = devices.map((d) => `${d.getName()}=${JSON.stringify(d.getData())}`).join(' | ') || 'none';
+  throw new Error(`Device not found. widgetId="${deviceId}" known devices: ${known}`);
 }
 
 module.exports = { resolveWidgetDevice };

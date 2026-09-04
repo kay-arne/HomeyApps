@@ -82,5 +82,8 @@
   },
   "1.2.9": {
     "en": "Redesigned the Cluster, Node, VM and Container driver icons as clean line drawings to meet Homey's App Store icon guidelines, replacing the solid-filled icons (and the Node driver's icon, which was a duplicate of the app icon)."
+  },
+  "1.2.10": {
+    "en": "Redesigned all remaining capability icons (CPU, Memory, Disk, Network, Uptime, connection status, node/VM/LXC counts) to match the new driver icon style. Also fixed the Memory Usage sensor showing the CPU icon."
   }
 }

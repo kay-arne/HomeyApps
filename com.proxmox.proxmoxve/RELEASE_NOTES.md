@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.2.10 - Capability Icons Redesigned to Match
+
+### 🐛 Fixes
+- **Remaining capability icons redesigned**: CPU, Memory, Disk, Network In/Out, Uptime,
+  Connected via Host, Using Fallback Connection, Node Offline / Quorum Lost, and the Node/VM/LXC
+  count icons were still the old mixed icon set from before v1.2.9's driver icon redesign. All
+  redrawn as line art in the same style as the new driver icons - the VM/LXC count icons are
+  literally scaled-down copies of the Cluster/Node driver icons for a consistent look throughout
+  the app.
+- **Memory Usage showed the CPU icon**: a leftover copy-paste bug - `measure_memory_usage_perc`
+  pointed at `assets/cpu.svg` instead of its own icon. It now uses a dedicated RAM icon.
+- The app icon (`assets/icon.svg`, Proxmox's own logo) is unchanged - Homey's guidelines
+  explicitly allow using a supported brand's own icon there.
+
 ## v1.2.9 - Driver Icons Redesigned for App Store Compliance
 
 ### 🐛 Fixes

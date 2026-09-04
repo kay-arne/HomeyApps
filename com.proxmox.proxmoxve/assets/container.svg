@@ -1,5 +1,9 @@
-<!-- "cube" icon from Font Awesome Free 6.7.2 (https://fontawesome.com), licensed CC BY 4.0.
-     Matches the glyph (fa-cube, \f1b2) Proxmox VE's own web UI uses for LXC containers. -->
-<svg width="24" height="24" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-<path d="M234.5 5.7c13.9-5 29.1-5 43.1 0l192 68.6C495 83.4 512 107.5 512 134.6l0 242.9c0 27-17 51.2-42.5 60.3l-192 68.6c-13.9 5-29.1 5-43.1 0l-192-68.6C17 428.6 0 404.5 0 377.4L0 134.6c0-27 17-51.2 42.5-60.3l192-68.6zM256 66L82.3 128 256 190l173.7-62L256 66zm32 368.6l160-57.1 0-188L288 246.6l0 188z" fill="currentColor"/>
+<!-- Line-art isometric box icon for the "Total LXCs" capability (measure_lxc_count), scaled down
+     from the proxmox-vm driver's own container.svg to match it. -->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="12,4 5,7.8 12,11.6 19,7.8" />
+    <polygon points="5,7.8 12,11.6 12,19.6 5,15.8" />
+    <polygon points="19,7.8 12,11.6 12,19.6 19,15.8" />
+  </g>
 </svg>

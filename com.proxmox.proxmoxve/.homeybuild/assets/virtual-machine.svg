@@ -1,5 +1,10 @@
-<!-- "desktop" icon from Font Awesome Free 6.7.2 (https://fontawesome.com), licensed CC BY 4.0.
-     Matches the glyph (fa-desktop, \f108) Proxmox VE's own web UI uses for QEMU VMs. -->
-<svg width="24" height="24" viewBox="0 0 576 512" xmlns="http://www.w3.org/2000/svg">
-<path d="M64 0C28.7 0 0 28.7 0 64L0 352c0 35.3 28.7 64 64 64l176 0-10.7 32L160 448c-17.7 0-32 14.3-32 32s14.3 32 32 32l256 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-69.3 0L336 416l176 0c35.3 0 64-28.7 64-64l0-288c0-35.3-28.7-64-64-64L64 0zM512 64l0 224L64 288 64 64l448 0z" fill="currentColor"/>
+<!-- Line-art monitor icon for the "Total VMs" capability (measure_vm_count), scaled down from
+     the proxmox-vm driver's own icon.svg to match it. -->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3.6" y="4" width="16.8" height="11" rx="1.2" />
+    <rect x="5.8" y="6" width="12.4" height="7" rx="0.6" />
+    <line x1="12" y1="15" x2="12" y2="17.8" />
+    <line x1="8.8" y1="19" x2="15.2" y2="19" />
+  </g>
 </svg>

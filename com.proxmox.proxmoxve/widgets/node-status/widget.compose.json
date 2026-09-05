@@ -1,16 +1,16 @@
 {
   "name": {
-    "en": "Proxmox Node Detail",
-    "nl": "Proxmox Node Detail"
+    "en": "Proxmox Node Status",
+    "nl": "Proxmox Node Status"
   },
-  "height": 300,
+  "height": 280,
   "settings": [
     {
       "id": "device",
       "type": "autocomplete",
       "title": {
-        "en": "Node",
-        "nl": "Node"
+        "en": "Cluster",
+        "nl": "Cluster"
       }
     }
   ],

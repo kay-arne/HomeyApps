@@ -9,13 +9,7 @@ module.exports = {
     return {
       name: device.getName(),
       available: device.getAvailable(),
-      guests: device.getAvailable() ? await device.getGuestsStatus() : [],
+      nodes: device.getAvailable() ? await device.getNodesStatus() : [],
     };
-  },
-
-  async setState({ homey, query, body }) {
-    const device = await resolveWidgetDevice(homey, 'proxmox-cluster', query.deviceId);
-    await device._runVmAction(body.vmid, body.type, body.action);
-    return { ok: true };
   },
 };

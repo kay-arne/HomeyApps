@@ -85,5 +85,8 @@
   },
   "1.2.10": {
     "en": "Redesigned all remaining capability icons (CPU, Memory, Disk, Network, Uptime, connection status, node/VM/LXC counts) to match the new driver icon style. Also fixed the Memory Usage sensor showing the CPU icon."
+  },
+  "1.2.11": {
+    "en": "Reworked the dashboard widgets around live operational status instead of performance graphs (Homey's own Insights already covers historical charts): VM/Container Control and the new Node Status widget now show every VM/Container or node in your cluster at once, with Start/Shutdown/Restart controls, from a single widget. Fixed scrolling inside widget lists, brought widget styling in line with Homey's guidelines, and added proper preview images to all four widgets."
   }
 }

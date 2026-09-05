@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.proxmox.proxmoxve",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "brandColor": "#D76300",
@@ -1120,6 +1120,30 @@
     }
   ],
   "widgets": {
+    "backup-status": {
+      "name": {
+        "en": "Proxmox Backup & Snapshot Status",
+        "nl": "Proxmox Backup & Snapshot Status"
+      },
+      "height": 280,
+      "settings": [
+        {
+          "id": "device",
+          "type": "autocomplete",
+          "title": {
+            "en": "Cluster",
+            "nl": "Cluster"
+          }
+        }
+      ],
+      "api": {
+        "getSummary": {
+          "method": "GET",
+          "path": "/summary"
+        }
+      },
+      "id": "backup-status"
+    },
     "cluster-overview": {
       "name": {
         "en": "Proxmox Cluster Overview",
@@ -1144,19 +1168,19 @@
       },
       "id": "cluster-overview"
     },
-    "node-detail": {
+    "node-status": {
       "name": {
-        "en": "Proxmox Node Detail",
-        "nl": "Proxmox Node Detail"
+        "en": "Proxmox Node Status",
+        "nl": "Proxmox Node Status"
       },
-      "height": 300,
+      "height": 280,
       "settings": [
         {
           "id": "device",
           "type": "autocomplete",
           "title": {
-            "en": "Node",
-            "nl": "Node"
+            "en": "Cluster",
+            "nl": "Cluster"
           }
         }
       ],
@@ -1166,21 +1190,21 @@
           "path": "/status"
         }
       },
-      "id": "node-detail"
+      "id": "node-status"
     },
     "vm-control": {
       "name": {
         "en": "Proxmox VM/Container Control",
         "nl": "Proxmox VM/Container Bediening"
       },
-      "height": 300,
+      "height": 280,
       "settings": [
         {
           "id": "device",
           "type": "autocomplete",
           "title": {
-            "en": "VM/Container",
-            "nl": "VM/Container"
+            "en": "Cluster",
+            "nl": "Cluster"
           }
         }
       ],

@@ -667,6 +667,109 @@ module.exports = class ProxmoxClusterDevice extends Homey.Device {
       .sort((a, b) => b.usedPct - a.usedPct);
   }
 
+  // === OPERATIONAL STATUS WIDGETS (widgets/vm-control, widgets/node-status) ===
+
+  // Cluster-wide live list of every VM/Container's running state, for widgets/vm-control - a
+  // single cluster/resources call (already cached/shared with every other cluster-scoped read),
+  // no need for the guest to be paired as its own Homey device.
+  async getGuestsStatus() {
+    const res = await this._executeApiCallWithFallback('/api2/json/cluster/resources');
+    return (res?.data || [])
+      .filter((r) => r.type === 'qemu' || r.type === 'lxc')
+      .map((r) => ({
+        vmid: r.vmid,
+        type: r.type,
+        name: r.name || `${r.type} ${r.vmid}`,
+        running: r.status === 'running',
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // Cluster-wide live node status, for widgets/node-status - CPU/Memory come straight from
+  // cluster/resources for type 'node' (one call, no per-node /status requests). Disk usage isn't
+  // available there for nodes (only for storage/qemu/lxc), and isn't included here to keep this
+  // to a single API call - it's already visible on the Node device's own tile.
+  async getNodesStatus() {
+    const res = await this._executeApiCallWithFallback('/api2/json/cluster/resources');
+    const resources = res?.data || [];
+    const nodes = resources.filter((r) => r.type === 'node');
+    const guests = resources.filter((r) => r.type === 'qemu' || r.type === 'lxc');
+
+    return nodes
+      .map((n) => ({
+        name: n.node,
+        online: n.status === 'online',
+        cpuPerc: n.status === 'online' ? parseFloat(((n.cpu || 0) * 100).toFixed(1)) : null,
+        memPerc: n.status === 'online' && n.maxmem > 0 ? parseFloat(((n.mem / n.maxmem) * 100).toFixed(1)) : null,
+        vmCount: guests.filter((g) => g.node === n.node && g.type === 'qemu' && g.status === 'running').length,
+        lxcCount: guests.filter((g) => g.node === n.node && g.type === 'lxc' && g.status === 'running').length,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // === BACKUP & SNAPSHOT STATUS (widgets/backup-status) ===
+
+  // Cluster-wide summary of every VM/Container's most recent snapshot and backup task.
+  // /cluster/tasks covers backup status for the whole cluster in one call; snapshots have no
+  // cluster-wide list endpoint, so that part is one call per guest - each individually covered
+  // by the existing 5-minute response cache in _executeApiCallWithFallback() (no refreshCache/
+  // skipCache here), so repeated widget polls don't re-fetch on every 15s tick.
+  async getBackupSnapshotSummary() {
+    const res = await this._executeApiCallWithFallback('/api2/json/cluster/resources');
+    const guests = (res?.data || []).filter((r) => r.type === 'qemu' || r.type === 'lxc');
+
+    let tasks = [];
+    try {
+      const taskRes = await this._executeApiCallWithFallback('/api2/json/cluster/tasks');
+      tasks = Array.isArray(taskRes?.data) ? taskRes.data : [];
+    } catch (e) {
+      // Backup status shows as unknown below; snapshots still work independently.
+    }
+
+    const latestBackupByVmid = new Map();
+    for (const t of tasks) {
+      if (t.type !== 'vzdump') continue;
+      const vmid = Number(t.id);
+      if (!vmid) continue;
+      const existing = latestBackupByVmid.get(vmid);
+      if (!existing || t.starttime > existing.starttime) latestBackupByVmid.set(vmid, t);
+    }
+
+    const summaries = await Promise.all(guests.map(async (g) => {
+      let lastSnapshot = null;
+      try {
+        const snapEndpoint = `/api2/json/nodes/${g.node}/${g.type}/${g.vmid}/snapshot`;
+        const snapRes = await this._executeApiCallWithFallback(snapEndpoint);
+        const snaps = (snapRes?.data || []).filter((s) => s.name !== 'current' && s.snaptime);
+        if (snaps.length) {
+          snaps.sort((a, b) => b.snaptime - a.snaptime);
+          lastSnapshot = { name: snaps[0].name, snaptime: snaps[0].snaptime };
+        }
+      } catch (e) {
+        // Leave lastSnapshot null rather than failing the whole summary
+      }
+
+      const task = latestBackupByVmid.get(Number(g.vmid));
+      let lastBackup = null;
+      if (task) {
+        let status = 'failed';
+        if (!task.endtime) status = 'running';
+        else if (task.status === 'OK') status = 'ok';
+        lastBackup = { status, time: task.endtime || task.starttime };
+      }
+
+      return {
+        name: g.name || `${g.type} ${g.vmid}`,
+        vmid: g.vmid,
+        type: g.type,
+        lastSnapshot,
+        lastBackup,
+      };
+    }));
+
+    return summaries.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   async _findNodeForVm(vmid, type, { skipShortCache = false } = {}) {
     const key = `${type}-${vmid}`;
 

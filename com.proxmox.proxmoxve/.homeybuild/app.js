@@ -45,8 +45,9 @@ module.exports = class ProxmoxVeApp extends Homey.App {
     };
 
     registerDevicePicker('cluster-overview', 'proxmox-cluster');
-    registerDevicePicker('node-detail', 'proxmox-node');
-    registerDevicePicker('vm-control', 'proxmox-vm');
+    registerDevicePicker('vm-control', 'proxmox-cluster');
+    registerDevicePicker('node-status', 'proxmox-cluster');
+    registerDevicePicker('backup-status', 'proxmox-cluster');
   }
 
   // Optional: Handle app-level events

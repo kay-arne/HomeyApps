@@ -1,21 +1,37 @@
 <html>
   <head>
+    <meta charset="utf-8">
     <style>
       body {
         margin: 0;
       }
       .row {
         display: flex;
-        align-items: center;
         justify-content: space-between;
+        align-items: center;
       }
-      .vm-info {
+      .header-row {
+        margin-bottom: var(--homey-su-2);
+      }
+      #list {
+        overflow-y: auto;
+        max-height: 230px;
+        touch-action: pan-y;
+      }
+      .guest-row {
+        padding: var(--homey-su-2) 0;
+        border-bottom: var(--homey-line-light);
+      }
+      .guest-row:last-child {
+        border-bottom: none;
+      }
+      .guest-info {
         display: flex;
         align-items: center;
         gap: var(--homey-su-2);
         min-width: 0;
       }
-      .vm-name {
+      .guest-name {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -32,39 +48,54 @@
       .status-stopped {
         background: var(--homey-line-color);
       }
-      .vm-toggle {
-        border: 1px solid var(--homey-line-color);
-        border-radius: var(--homey-su-2);
+      .guest-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+      }
+      .icon-btn {
+        border: var(--homey-line);
+        border-radius: var(--homey-border-radius-default);
+        background: transparent;
+        padding: 4px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .homey-custom-icon-restart {
+        width: var(--homey-icon-size-small);
+        height: var(--homey-icon-size-small);
+        background-color: var(--homey-icon-color-dark);
+        -webkit-mask-image: url('restart.svg');
+        mask-image: url('restart.svg');
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-position: center;
+        mask-position: center;
+      }
+      .icon-btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .toggle-btn {
+        border: var(--homey-line);
+        border-radius: var(--homey-border-radius-default);
         background: transparent;
         color: var(--homey-text-color);
         font-size: var(--homey-font-size-small);
         padding: 4px var(--homey-su-2);
         cursor: pointer;
-        flex-shrink: 0;
       }
-      .vm-toggle:disabled {
-        opacity: 0.5;
+      .toggle-btn:disabled {
+        opacity: 0.4;
         cursor: default;
       }
-      .header-row {
-        margin-bottom: var(--homey-su-3);
-      }
-      .metric-row {
-        margin-bottom: var(--homey-su-2);
-      }
-      .metric-label-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-      }
-      .metric-graph {
-        width: 100%;
-        height: 28px;
-        display: block;
-        margin-top: 2px;
-      }
       .empty {
-        padding: var(--homey-su-2) 0;
+        padding: var(--homey-su-4) 0;
       }
     </style>
   </head>
@@ -76,141 +107,113 @@
 
     <script type="text/javascript">
       let deviceId = null;
-      let busy = false;
+      const busyKeys = new Set();
 
-      // Widgets have no access to historical data from the app - graphs are built up client-side
-      // from a rolling window of live refreshes for as long as this widget instance stays open.
-      const HISTORY_LEN = 20; // ~5 minutes at the 15s refresh interval below
-      const history = { cpu: [], mem: [], net: [] };
-      let prevNet = null; // { total, ts } - previous cumulative netin+netout sample, to derive a rate
+      // Homey's dashboard can hijack vertical touch-scroll from a widget's own scrollable list
+      // once more than one widget is stacked in a column - manually drive the scroll and claim
+      // the gesture via preventDefault() so #list scrolls instead of the dashboard itself.
+      // https://community.homey.app/t/scrolling-issue-in-widget/150676
+      let touchStartY = 0;
+      let touchStartScrollTop = 0;
+      let touchScrollEl = null;
 
-      function sparkline(values, opts) {
-        opts = opts || {};
-        const width = 100;
-        const height = 28;
-        const color = opts.color || 'var(--homey-text-color-blue)';
-        const clean = values.map((v) => (v == null ? 0 : v));
+      document.addEventListener('touchstart', (e) => {
+        touchScrollEl = e.target.closest('#list');
+        if (!touchScrollEl) return;
+        touchStartY = e.touches[0].clientY;
+        touchStartScrollTop = touchScrollEl.scrollTop;
+      }, { passive: true });
 
-        if (clean.length < 2) {
-          return `<svg class="metric-graph" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"></svg>`;
-        }
+      document.addEventListener('touchmove', (e) => {
+        if (!touchScrollEl) return;
+        const maxScroll = touchScrollEl.scrollHeight - touchScrollEl.clientHeight;
+        if (maxScroll <= 0) return;
+        const deltaY = touchStartY - e.touches[0].clientY;
+        touchScrollEl.scrollTop = Math.max(0, Math.min(maxScroll, touchStartScrollTop + deltaY));
+        if (e.cancelable) e.preventDefault();
+      }, { passive: false });
 
-        const lo = opts.min != null ? opts.min : Math.min(...clean);
-        const hi = opts.max != null ? opts.max : Math.max(...clean);
-        const range = (hi - lo) || 1;
-        const stepX = width / (clean.length - 1);
-        const points = clean.map((v, i) => {
-          const x = i * stepX;
-          const y = height - ((v - lo) / range) * (height - 2) - 1;
-          return `${x.toFixed(1)},${y.toFixed(1)}`;
-        }).join(' ');
-
-        return `<svg class="metric-graph" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
-          <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5"
-            vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
-        </svg>`;
+      function guestKey(g) {
+        return `${g.type}-${g.vmid}`;
       }
 
-      function pushHistory(arr, value) {
-        arr.push(value);
-        if (arr.length > HISTORY_LEN) arr.shift();
-      }
+      function guestRow(g) {
+        const key = guestKey(g);
+        const busy = busyKeys.has(key);
+        const statusClass = g.running ? 'status-running' : 'status-stopped';
+        const label = busy ? '…' : (g.running ? 'Shutdown' : 'Start');
 
-      function formatRate(bytesPerSec) {
-        if (bytesPerSec == null) return '-';
-        if (bytesPerSec < 1024) return `${bytesPerSec.toFixed(0)} B/s`;
-        if (bytesPerSec < 1024 ** 2) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
-        return `${(bytesPerSec / 1024 ** 2).toFixed(1)} MB/s`;
-      }
-
-      function metricGraphRow(label, valueText, values, opts) {
         return `
-          <div class="metric-row">
-            <div class="metric-label-row">
-              <span class="homey-text-small">${label}</span>
-              <span class="homey-text-small-light">${valueText}</span>
+          <div class="guest-row">
+            <div class="row">
+              <div class="guest-info">
+                <span class="status-dot ${statusClass}"></span>
+                <span class="guest-name homey-text-small">${g.name}</span>
+              </div>
+              <div class="guest-actions">
+                <button class="icon-btn" data-action="restart" data-key="${key}" ${(!g.running || busy) ? 'disabled' : ''} title="Restart"><div class="homey-custom-icon-restart"></div></button>
+                <button class="toggle-btn" data-action="toggle" data-key="${key}" ${busy ? 'disabled' : ''}>${label}</button>
+              </div>
             </div>
-            ${sparkline(values, opts)}
           </div>`;
       }
 
-      function render(item) {
+      function render(data) {
         const content = document.getElementById('content');
 
-        if (!item.available) {
-          content.innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">Device unavailable</p>';
+        if (!data.available) {
+          content.innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">Cluster unavailable</p>';
           return;
         }
 
-        const statusClass = item.running ? 'status-running' : 'status-stopped';
-        const label = busy ? '…' : (item.running ? 'Shutdown' : 'Start');
-
-        let netRate = null;
-        if (item.netInBytes != null && item.netOutBytes != null) {
-          const total = item.netInBytes + item.netOutBytes;
-          if (prevNet && total >= prevNet.total) {
-            const elapsedSec = (Date.now() - prevNet.ts) / 1000;
-            if (elapsedSec > 0) netRate = (total - prevNet.total) / elapsedSec;
-          }
-          prevNet = { total, ts: Date.now() };
-        }
-
-        if (item.running) {
-          pushHistory(history.cpu, item.cpuPerc);
-          pushHistory(history.mem, item.memPerc);
-          if (netRate != null) pushHistory(history.net, netRate);
-        } else {
-          // Stopped - don't keep graphing stale last-known values or a fabricated 0 network rate
-          history.cpu.length = 0;
-          history.mem.length = 0;
-          history.net.length = 0;
-          prevNet = null;
-        }
+        const listHtml = data.guests.length
+          ? data.guests.map(guestRow).join('')
+          : '<p class="homey-text-small-light empty">No VMs/Containers found</p>';
 
         content.innerHTML = `
           <div class="row header-row">
-            <div class="vm-info">
-              <span class="status-dot ${statusClass}"></span>
-              <span class="vm-name homey-text-small">${item.name}</span>
-            </div>
-            <button class="vm-toggle" id="toggleBtn" ${busy ? 'disabled' : ''}>${label}</button>
+            <span class="homey-text-medium">${data.name}</span>
           </div>
-          ${item.running ? `
-            ${metricGraphRow('CPU', `${item.cpuPerc ?? 0}%`, history.cpu, { color: 'var(--homey-text-color-blue)', min: 0, max: 100 })}
-            ${metricGraphRow('Memory', `${item.memPerc ?? 0}%`, history.mem, { color: 'var(--homey-text-color-green)', min: 0, max: 100 })}
-            ${metricGraphRow('Network', formatRate(netRate), history.net, { color: 'var(--homey-text-color-orange)', min: 0 })}
-          ` : '<p class="homey-text-small-light empty">Stopped</p>'}
+          <div id="list">${listHtml}</div>
         `;
 
-        document.getElementById('toggleBtn').addEventListener('click', () => onToggleClick(item.running));
+        content.querySelectorAll('[data-action="toggle"]').forEach((btn) => {
+          btn.addEventListener('click', () => onAction(btn.dataset.key, data.guests, btn.dataset.action));
+        });
+        content.querySelectorAll('[data-action="restart"]').forEach((btn) => {
+          btn.addEventListener('click', () => onAction(btn.dataset.key, data.guests, btn.dataset.action));
+        });
       }
 
-      function onToggleClick(currentlyRunning) {
-        busy = true;
-        const btn = document.getElementById('toggleBtn');
-        if (btn) {
-          btn.disabled = true;
-          btn.textContent = '…';
-        }
+      function onAction(key, guests, action) {
+        const guest = guests.find((g) => guestKey(g) === key);
+        if (!guest || busyKeys.has(key)) return;
 
-        Homey.api('POST', '/state?deviceId=' + encodeURIComponent(deviceId), { action: currentlyRunning ? 'shutdown' : 'start' })
-          .then(() => {
-            // Give Proxmox a moment before polling the new state
-            setTimeout(refresh, 1500);
-          })
+        busyKeys.add(key);
+        render({ available: true, name: lastName, guests });
+
+        const apiAction = action === 'restart' ? 'reboot' : (guest.running ? 'shutdown' : 'start');
+
+        Homey.api('POST', '/state?deviceId=' + encodeURIComponent(deviceId), { vmid: guest.vmid, type: guest.type, action: apiAction })
+          .then(() => setTimeout(refresh, 1500))
           .catch(console.error)
           .finally(() => {
-            busy = false;
+            busyKeys.delete(key);
           });
       }
 
+      let lastName = '';
+
       function refresh() {
         if (!deviceId) {
-          document.getElementById('content').innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">No VM/Container selected. Configure this widget to pick one.</p>';
+          document.getElementById('content').innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">No cluster device selected. Configure this widget to pick one.</p>';
           return;
         }
         Homey.api('GET', '/status?deviceId=' + encodeURIComponent(deviceId), {})
-          .then(render)
+          .then((data) => {
+            lastName = data.name;
+            render(data);
+          })
           .catch((err) => {
             document.getElementById('content').innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">' + (err && err.message ? err.message : 'Error loading data') + '</p>';
           });

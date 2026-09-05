@@ -1,0 +1,168 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body {
+        margin: 0;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .header-row {
+        margin-bottom: var(--homey-su-2);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px var(--homey-su-2);
+        border-radius: var(--homey-border-radius-small);
+        font-size: var(--homey-font-size-small);
+        border: var(--homey-line);
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .badge-warn {
+        color: var(--homey-text-color-orange);
+        border-color: var(--homey-text-color-orange);
+      }
+      .badge-ok {
+        color: var(--homey-text-color-green);
+        border-color: var(--homey-text-color-green);
+      }
+      .badge-info {
+        color: var(--homey-text-color-blue);
+        border-color: var(--homey-text-color-blue);
+      }
+      .badge-neutral {
+        color: var(--homey-text-color-light);
+      }
+      #list {
+        overflow-y: auto;
+        max-height: 230px;
+        touch-action: pan-y;
+      }
+      .guest-row {
+        padding: var(--homey-su-2) 0;
+        border-bottom: var(--homey-line-light);
+      }
+      .guest-row:last-child {
+        border-bottom: none;
+      }
+      .guest-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-right: var(--homey-su-2);
+      }
+      .empty {
+        padding: var(--homey-su-4) 0;
+      }
+    </style>
+  </head>
+
+  <body class="homey-widget">
+    <div id="content">
+      <p class="homey-text-small-light homey-text-align-center">Loading…</p>
+    </div>
+
+    <script type="text/javascript">
+      let deviceId = null;
+
+      // Homey's dashboard can hijack vertical touch-scroll from a widget's own scrollable list
+      // once more than one widget is stacked in a column - manually drive the scroll and claim
+      // the gesture via preventDefault() so #list scrolls instead of the dashboard itself.
+      // https://community.homey.app/t/scrolling-issue-in-widget/150676
+      let touchStartY = 0;
+      let touchStartScrollTop = 0;
+      let touchScrollEl = null;
+
+      document.addEventListener('touchstart', (e) => {
+        touchScrollEl = e.target.closest('#list');
+        if (!touchScrollEl) return;
+        touchStartY = e.touches[0].clientY;
+        touchStartScrollTop = touchScrollEl.scrollTop;
+      }, { passive: true });
+
+      document.addEventListener('touchmove', (e) => {
+        if (!touchScrollEl) return;
+        const maxScroll = touchScrollEl.scrollHeight - touchScrollEl.clientHeight;
+        if (maxScroll <= 0) return;
+        const deltaY = touchStartY - e.touches[0].clientY;
+        touchScrollEl.scrollTop = Math.max(0, Math.min(maxScroll, touchStartScrollTop + deltaY));
+        if (e.cancelable) e.preventDefault();
+      }, { passive: false });
+
+      function relTime(unixSec) {
+        if (!unixSec) return null;
+        const diffSec = Math.max(0, Math.floor(Date.now() / 1000) - unixSec);
+        if (diffSec < 60) return 'just now';
+        if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+        if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+        return `${Math.floor(diffSec / 86400)}d ago`;
+      }
+
+      function backupBadge(lastBackup) {
+        if (!lastBackup) return '<span class="badge badge-neutral">Never</span>';
+        if (lastBackup.status === 'running') return '<span class="badge badge-info">Running</span>';
+        if (lastBackup.status === 'ok') return `<span class="badge badge-ok">OK · ${relTime(lastBackup.time)}</span>`;
+        return `<span class="badge badge-warn">Failed · ${relTime(lastBackup.time)}</span>`;
+      }
+
+      function guestRow(g) {
+        const snapshotLine = g.lastSnapshot
+          ? `Snapshot: ${g.lastSnapshot.name} · ${relTime(g.lastSnapshot.snaptime)}`
+          : 'No snapshots';
+
+        return `
+          <div class="guest-row">
+            <div class="row">
+              <span class="guest-name homey-text-small">${g.name}</span>
+              ${backupBadge(g.lastBackup)}
+            </div>
+            <div class="homey-text-small-light">${snapshotLine}</div>
+          </div>`;
+      }
+
+      function render(data) {
+        const content = document.getElementById('content');
+
+        if (!data.available) {
+          content.innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">Cluster unavailable</p>';
+          return;
+        }
+
+        const listHtml = data.guests.length
+          ? data.guests.map(guestRow).join('')
+          : '<p class="homey-text-small-light empty">No VMs/Containers found</p>';
+
+        content.innerHTML = `
+          <div class="row header-row">
+            <span class="homey-text-medium">${data.name}</span>
+          </div>
+          <div id="list">${listHtml}</div>
+        `;
+      }
+
+      function refresh() {
+        if (!deviceId) {
+          document.getElementById('content').innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">No cluster device selected. Configure this widget to pick one.</p>';
+          return;
+        }
+        Homey.api('GET', '/summary?deviceId=' + encodeURIComponent(deviceId), {})
+          .then(render)
+          .catch((err) => {
+            document.getElementById('content').innerHTML = '<p class="homey-text-small-light homey-text-align-center empty">' + (err && err.message ? err.message : 'Error loading data') + '</p>';
+          });
+      }
+
+      function onHomeyReady(Homey) {
+        Homey.ready();
+        deviceId = Homey.getSettings().device?.id;
+        refresh();
+        setInterval(refresh, 60000);
+      }
+    </script>
+  </body>
+</html>

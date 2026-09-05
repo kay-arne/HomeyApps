@@ -1,7 +1,7 @@
 {
   "name": {
-    "en": "Proxmox VM/Container Control",
-    "nl": "Proxmox VM/Container Bediening"
+    "en": "Proxmox Backup & Snapshot Status",
+    "nl": "Proxmox Backup & Snapshot Status"
   },
   "height": 280,
   "settings": [
@@ -15,13 +15,9 @@
     }
   ],
   "api": {
-    "getStatus": {
+    "getSummary": {
       "method": "GET",
-      "path": "/status"
-    },
-    "setState": {
-      "method": "POST",
-      "path": "/state"
+      "path": "/summary"
     }
   }
 }

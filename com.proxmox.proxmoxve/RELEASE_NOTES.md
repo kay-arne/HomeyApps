@@ -1,5 +1,34 @@
 # Release Notes
 
+## v1.2.11 - Dashboard Widgets Reworked Around Live Operational Status
+
+### 🚀 New Features
+- **VM/Container Control widget rebuilt**: instead of picking one VM/Container per widget, it
+  now shows a live, scrollable list of every VM/Container in the cluster at once, each with a
+  Start/Shutdown toggle and a Restart button - backed by a single cluster-wide API call, so it
+  doesn't even require the guest to be paired as its own Homey device.
+- **New Node Status widget**: same idea for nodes - a live list of every node's online state,
+  CPU/Memory usage, and running VM/LXC counts, from one widget.
+- Both replace the short-lived time-window chart widgets from the last few builds. Homey's own
+  Insights already keeps full historical data for every measured capability in this app - a
+  second, app-side history buffer just for charts turned out to be redundant, and its data didn't
+  match Insights anyway (only capturing whatever ran since the app last restarted). If you want
+  graphs, add Homey's own Insights widget for the capability you're interested in - it'll show
+  real history, not a partial reconstruction.
+
+### 🐛 Fixes
+- **Widget lists couldn't be scrolled**: a known Homey platform quirk where the dashboard's own
+  touch handling intercepts vertical swipes meant for a widget's inner scrollable list once more
+  than one widget shares a column. Backup & Snapshot Status, VM/Container Control, and Node
+  Status now claim the scroll gesture themselves so the list actually scrolls.
+- **Widget styling brought in line with Homey's guidelines**: borders, border radii, and the
+  Restart icon now use the documented `--homey-line`/`--homey-border-radius-*` tokens and the
+  `.homey-custom-icon-*` mask-image pattern instead of ad-hoc values and an inline SVG.
+- **Real preview images for all four widgets**: they were still showing the generic "TODO REPLACE
+  ME" placeholder from the CLI scaffold. Replaced with simple, on-brand previews (no screenshots
+  or text, per Homey's App Store guidelines) for both light and dark mode - and about a quarter
+  of the file size of the old generic placeholders.
+
 ## v1.2.10 - Capability Icons Redesigned to Match
 
 ### 🐛 Fixes

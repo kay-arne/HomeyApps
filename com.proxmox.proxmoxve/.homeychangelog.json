@@ -88,5 +88,8 @@
   },
   "1.2.11": {
     "en": "Reworked the dashboard widgets around live operational status instead of performance graphs (Homey's own Insights already covers historical charts): VM/Container Control and the new Node Status widget now show every VM/Container or node in your cluster at once, with Start/Shutdown/Restart controls, from a single widget. Fixed scrolling inside widget lists, brought widget styling in line with Homey's guidelines, and added proper preview images to all four widgets."
+  },
+  "1.2.12": {
+    "en": "Replaced the Node, VM/Container and Cluster driver images with proper illustrations on a white background, per Homey App Store review feedback - they were previously just a copy of the pairing icon."
   }
 }

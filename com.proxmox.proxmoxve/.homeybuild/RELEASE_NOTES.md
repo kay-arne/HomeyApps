@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.2.12 - Real Driver Images
+
+### 🐛 Fixes
+- **Driver images replaced**: Athom's App Store review flagged that the Node, VM/Container, and
+  Cluster driver images were just the pairing icon rasterized onto a white background - not
+  actual pictures of the device/service, per the [App Store guidelines](https://apps.developer.homey.app/app-store/guidelines#id-1.4.-images).
+  Replaced all three with proper illustrations: an angled server tower with drive bays for Node,
+  a desktop monitor/keyboard setup for VM/Container, and three connected server units for
+  Cluster - all on the required white background, distinct from their (transparent-background,
+  line-art) pairing icons.
+
 ## v1.2.11 - Dashboard Widgets Reworked Around Live Operational Status
 
 ### 🚀 New Features

@@ -1,0 +1,10 @@
+node_modules/
+app.json
+.homeycompose/locales/
+*.log
+.DS_Store
+env.json
+
+
+# Added by Homey CLI
+/.homeybuild/

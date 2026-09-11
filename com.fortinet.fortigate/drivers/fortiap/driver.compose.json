@@ -1,0 +1,34 @@
+{
+  "id": "fortiap",
+  "name": { "en": "FortiAP" },
+  "class": "other",
+  "capabilities": [
+    "ap_client_count",
+    "ap_clients_2ghz",
+    "ap_clients_5ghz",
+    "ap_clients_6ghz",
+    "ap_throughput_rx",
+    "ap_throughput_tx",
+    "measure_power"
+  ],
+  "platforms": ["local"],
+  "connectivity": ["lan"],
+  "images": {
+    "small": "/drivers/fortiap/assets/images/small.png",
+    "large": "/drivers/fortiap/assets/images/large.png",
+    "xlarge": "/drivers/fortiap/assets/images/xlarge.png"
+  },
+  "pair": [
+    { "id": "select_fortigate" },
+    { "id": "list_devices", "template": "list_devices", "navigation": { "prev": "select_fortigate", "next": "add_devices" } },
+    { "id": "add_devices", "template": "add_devices" }
+  ],
+  "settings": [
+    {
+      "id": "pollInterval",
+      "type": "number",
+      "label": { "en": "Poll interval (seconds)" },
+      "value": 60
+    }
+  ]
+}

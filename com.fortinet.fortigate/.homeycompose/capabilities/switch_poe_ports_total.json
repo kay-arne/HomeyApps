@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "PoE-capable ports"
+  },
+  "icon": "/assets/capability_icons/port_poe.svg",
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "units": {
+    "en": "ports"
+  },
+  "decimals": 0
+}

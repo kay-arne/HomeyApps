@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "PoE power delivered"
+  },
+  "icon": "/assets/capability_icons/power.svg",
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "units": {
+    "en": "W"
+  },
+  "decimals": 1
+}

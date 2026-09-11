@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "A switch or access point came back online"
+  },
+  "titleFormatted": {
+    "en": "Came back online"
+  },
+  "args": [
+    {
+      "name": "device",
+      "type": "device",
+      "filter": "driver_id=fortiswitch|fortiap"
+    }
+  ],
+  "tokens": [
+    {
+      "name": "name",
+      "type": "string",
+      "title": { "en": "Name" },
+      "example": "Office AP"
+    }
+  ]
+}

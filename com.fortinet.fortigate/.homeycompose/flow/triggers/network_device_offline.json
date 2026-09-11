@@ -1,0 +1,29 @@
+{
+  "title": {
+    "en": "A switch or access point went offline"
+  },
+  "titleFormatted": {
+    "en": "Went offline"
+  },
+  "args": [
+    {
+      "name": "device",
+      "type": "device",
+      "filter": "driver_id=fortiswitch|fortiap"
+    }
+  ],
+  "tokens": [
+    {
+      "name": "name",
+      "type": "string",
+      "title": { "en": "Name" },
+      "example": "Office AP"
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": { "en": "Reason" },
+      "example": "not reported by FortiGate"
+    }
+  ]
+}

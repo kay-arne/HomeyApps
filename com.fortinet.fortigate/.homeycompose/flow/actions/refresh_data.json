@@ -1,0 +1,15 @@
+{
+  "title": {
+    "en": "Refresh data now"
+  },
+  "titleFormatted": {
+    "en": "Refresh data now"
+  },
+  "args": [
+    {
+      "name": "device",
+      "type": "device",
+      "filter": "driver_id=fortiswitch|fortiap|fortigate"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "id": "fortigate",
+  "name": { "en": "FortiGate" },
+  "class": "other",
+  "capabilities": ["gateway_throughput_wan_rx", "gateway_throughput_wan_tx"],
+  "platforms": ["local"],
+  "connectivity": ["lan"],
+  "images": {
+    "small": "/drivers/fortigate/assets/images/small.png",
+    "large": "/drivers/fortigate/assets/images/large.png",
+    "xlarge": "/drivers/fortigate/assets/images/xlarge.png"
+  },
+  "pair": [
+    { "id": "login" }
+  ],
+  "settings": [
+    {
+      "type": "group",
+      "label": { "en": "Connection" },
+      "children": [
+        {
+          "id": "host",
+          "type": "text",
+          "label": { "en": "Host / IP address" },
+          "value": ""
+        },
+        {
+          "id": "port",
+          "type": "number",
+          "label": { "en": "HTTPS port" },
+          "value": 443
+        },
+        {
+          "id": "vdom",
+          "type": "text",
+          "label": { "en": "VDOM (leave empty if VDOMs are disabled)" },
+          "value": ""
+        },
+        {
+          "id": "token",
+          "type": "password",
+          "label": { "en": "API token" },
+          "value": ""
+        },
+        {
+          "id": "insecure",
+          "type": "checkbox",
+          "label": { "en": "Accept self-signed / untrusted TLS certificate" },
+          "value": false
+        },
+        {
+          "id": "pollInterval",
+          "type": "number",
+          "label": { "en": "Poll interval (seconds)" },
+          "value": 60
+        },
+        {
+          "id": "wanInterfaces",
+          "type": "text",
+          "label": { "en": "WAN interface name(s) for throughput (comma-separated)" },
+          "hint": { "en": "FortiOS's monitor API doesn't expose which interface is your WAN, so name it yourself - e.g. \"a\" or \"wan1,wan2\" for dual-WAN. Leave empty to disable WAN throughput monitoring. Run tools/inspect.js's \"interfaces\" endpoint to see your interface names." },
+          "value": ""
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "label": { "en": "Push alerts (advanced)" },
+      "children": [
+        {
+          "id": "webhookSecret",
+          "type": "text",
+          "label": { "en": "Webhook secret (generated at pairing, used by FortiGate Automation, see README)" },
+          "value": ""
+        }
+      ]
+    }
+  ]
+}

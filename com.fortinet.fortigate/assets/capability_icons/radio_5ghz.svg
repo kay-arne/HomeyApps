@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960">
+  <path d="M370.4,511.2 A120,120 0 0 1 589.6,511.2" fill="none" stroke="#000000" stroke-width="68" stroke-linecap="round"/> <path d="M269.9,466.5 A230,230 0 0 1 690.1,466.5" fill="none" stroke="#000000" stroke-width="64" stroke-linecap="round"/> <path d="M169.4,421.7 A340,340 0 0 1 790.6,421.7" fill="none" stroke="#000000" stroke-width="60" stroke-linecap="round"/>
+  <circle cx="480" cy="630" r="42" fill="#000000"/>
+  <text x="480" y="900" font-family="Arial, Helvetica, sans-serif" font-size="150" font-weight="700" text-anchor="middle" fill="#000000">5GHz</text>
+</svg>

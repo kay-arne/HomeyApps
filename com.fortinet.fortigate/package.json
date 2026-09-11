@@ -1,0 +1,13 @@
+{
+  "name": "com.fortinet.fortigate",
+  "version": "1.0.0",
+  "description": "Homey app for FortiGate: discover and monitor FortiSwitch/FortiAP devices, energy (PoE) monitoring and alerts.",
+  "main": "app.js",
+  "license": "MIT",
+  "scripts": {
+    "inspect": "node tools/inspect.js"
+  },
+  "dependencies": {
+    "homey": "^3.5.0"
+  }
+}

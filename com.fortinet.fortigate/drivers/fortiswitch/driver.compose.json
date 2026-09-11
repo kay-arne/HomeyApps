@@ -1,0 +1,34 @@
+{
+  "id": "fortiswitch",
+  "name": { "en": "FortiSwitch" },
+  "class": "other",
+  "capabilities": [
+    "switch_poe_watts",
+    "switch_ports_online",
+    "switch_ports_total",
+    "switch_poe_ports_active",
+    "switch_poe_ports_total",
+    "switch_throughput_rx",
+    "switch_throughput_tx"
+  ],
+  "platforms": ["local"],
+  "connectivity": ["lan"],
+  "images": {
+    "small": "/drivers/fortiswitch/assets/images/small.png",
+    "large": "/drivers/fortiswitch/assets/images/large.png",
+    "xlarge": "/drivers/fortiswitch/assets/images/xlarge.png"
+  },
+  "pair": [
+    { "id": "select_fortigate" },
+    { "id": "list_devices", "template": "list_devices", "navigation": { "prev": "select_fortigate", "next": "add_devices" } },
+    { "id": "add_devices", "template": "add_devices" }
+  ],
+  "settings": [
+    {
+      "id": "pollInterval",
+      "type": "number",
+      "label": { "en": "Poll interval (seconds)" },
+      "value": 60
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Ports online"
+  },
+  "icon": "/assets/capability_icons/port.svg",
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "units": {
+    "en": "ports"
+  },
+  "decimals": 0
+}

@@ -1,0 +1,18 @@
+{
+  "title": {
+    "en": "Power cycle via PoE"
+  },
+  "titleFormatted": {
+    "en": "Power cycle via PoE"
+  },
+  "hint": {
+    "en": "Turns the PoE port this device is connected to off, waits a few seconds, then turns it back on. Requires the REST API token to have write (not read-only) access to the switch-controller configuration."
+  },
+  "args": [
+    {
+      "name": "device",
+      "type": "device",
+      "filter": "driver_id=fortiswitch|fortiap"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, sans-serif; padding: 0 20px; }
+    .option {
+      display: flex; align-items: center; padding: 10px; margin-top: 8px;
+      border: 1px solid #ddd; border-radius: 8px; cursor: pointer;
+    }
+    .option input { margin-right: 10px; }
+    .hint { color: #888; font-size: 12px; }
+    button {
+      margin-top: 24px; width: 100%; padding: 12px; border: none; border-radius: 6px;
+      background: #DA291C; color: white; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
+  </style>
+</head>
+<body>
+  <h2>Which FortiGate manages these devices?</h2>
+  <div id="list"><p class="hint">Loading paired FortiGates…</p></div>
+  <button id="submit" onclick="submitForm()" disabled>Continue</button>
+
+  <script type="application/javascript">
+    let fortigates = [];
+
+    Homey.emit('list_fortigates', {})
+      .then((list) => {
+        fortigates = list || [];
+        const el = document.getElementById('list');
+        if (!fortigates.length) {
+          el.innerHTML = '<p class="hint">No FortiGate has been added yet. Go back and add a FortiGate device first.</p>';
+          return;
+        }
+        el.innerHTML = fortigates.map((fg, i) => `
+          <label class="option">
+            <input type="radio" name="fortigate" value="${fg.id}" ${i === 0 ? 'checked' : ''} />
+            ${fg.name}
+          </label>
+        `).join('');
+        document.getElementById('submit').disabled = false;
+      })
+      .catch((err) => {
+        document.getElementById('list').innerHTML = `<p class="hint">Could not load FortiGates: ${err && err.message ? err.message : err}</p>`;
+      });
+
+    function submitForm() {
+      const selected = document.querySelector('input[name="fortigate"]:checked');
+      if (!selected) return;
+      const button = document.getElementById('submit');
+      button.disabled = true;
+      Homey.emit('select_fortigate', { id: selected.value })
+        .then(() => Homey.showView('list_devices'))
+        .catch((err) => {
+          button.disabled = false;
+          Homey.alert((err && err.message) || String(err), 'error');
+        });
+    }
+  </script>
+</body>
+</html>

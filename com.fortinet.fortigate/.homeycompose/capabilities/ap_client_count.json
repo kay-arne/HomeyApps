@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Connected clients"
+  },
+  "icon": "/assets/capability_icons/client.svg",
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "units": {
+    "en": "clients"
+  },
+  "decimals": 0
+}

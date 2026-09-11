@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Clients (2.4GHz)"
+  },
+  "icon": "/assets/capability_icons/radio_2ghz.svg",
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "units": {
+    "en": "clients"
+  },
+  "decimals": 0
+}

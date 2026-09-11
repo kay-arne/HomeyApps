@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, sans-serif; padding: 0 20px; }
+    label { display: block; margin-top: 14px; font-weight: 600; font-size: 13px; }
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%; box-sizing: border-box; padding: 8px; margin-top: 4px;
+      border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+    }
+    .row { display: flex; align-items: center; margin-top: 14px; }
+    .row input { margin-right: 8px; }
+    .hint { color: #888; font-size: 12px; margin-top: 4px; }
+    button {
+      margin-top: 24px; width: 100%; padding: 12px; border: none; border-radius: 6px;
+      background: #DA291C; color: white; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
+  </style>
+</head>
+<body>
+  <h2>Connect to your FortiGate</h2>
+  <p class="hint">
+    Use a dedicated REST API admin with an API token (System &gt; Administrators &gt; Create New &gt; REST API Admin).
+    A read-only profile is enough unless you plan to use the "power cycle via PoE" action.
+  </p>
+
+  <label for="host">Host / IP address</label>
+  <input type="text" id="host" placeholder="192.168.1.1" />
+
+  <label for="port">HTTPS port</label>
+  <input type="number" id="port" value="443" />
+
+  <label for="vdom">VDOM (leave empty if VDOMs are disabled)</label>
+  <input type="text" id="vdom" placeholder="root" />
+
+  <label for="token">API token</label>
+  <input type="password" id="token" placeholder="paste the token shown once when creating the REST API admin" />
+
+  <div class="row">
+    <input type="checkbox" id="insecure" />
+    <label for="insecure" style="margin:0;">Accept self-signed / untrusted TLS certificate</label>
+  </div>
+
+  <button id="submit" onclick="submitForm()">Connect</button>
+
+  <script type="application/javascript">
+    function submitForm() {
+      const button = document.getElementById('submit');
+      const data = {
+        host: document.getElementById('host').value.trim(),
+        port: Number(document.getElementById('port').value) || 443,
+        vdom: document.getElementById('vdom').value.trim(),
+        token: document.getElementById('token').value.trim(),
+        insecure: document.getElementById('insecure').checked,
+      };
+
+      if (!data.host || !data.token) {
+        Homey.alert('Please fill in at least the host and the API token.', 'error');
+        return;
+      }
+
+      button.disabled = true;
+      Homey.showLoadingOverlay();
+
+      Homey.emit('test_connection', data)
+        .then((device) => Homey.createDevice(device))
+        .then(() => {
+          Homey.hideLoadingOverlay();
+          Homey.done();
+        })
+        .catch((err) => {
+          Homey.hideLoadingOverlay();
+          button.disabled = false;
+          Homey.alert((err && err.message) || String(err), 'error');
+        });
+    }
+  </script>
+</body>
+</html>

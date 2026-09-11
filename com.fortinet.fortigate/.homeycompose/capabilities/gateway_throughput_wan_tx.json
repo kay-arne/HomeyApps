@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "WAN throughput (sent)"
+  },
+  "icon": "/assets/capability_icons/throughput_tx.svg",
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "units": {
+    "en": "Mbps"
+  },
+  "decimals": 2
+}

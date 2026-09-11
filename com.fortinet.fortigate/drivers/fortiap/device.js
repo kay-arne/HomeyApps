@@ -11,6 +11,8 @@ const NEW_CAPABILITIES = [
   'ap_clients_6ghz',
   'ap_throughput_rx',
   'ap_throughput_tx',
+  'ap_poe_watts',
+  'ap_poe_class',
 ];
 
 class FortiApDevice extends NetworkDeviceBase {
@@ -21,8 +23,18 @@ class FortiApDevice extends NetworkDeviceBase {
     await super.onInit();
   }
 
-  /** Devices paired before the per-band/throughput capabilities existed don't have them yet - add them in place. */
+  /**
+   * Devices paired before the per-band/throughput/PoE-watts capabilities
+   * existed don't have them yet - add them in place. Also swaps the old
+   * `measure_power` for `ap_poe_watts`: an AP's own PoE draw shouldn't count
+   * toward Homey's home Energy total, since anyone tracking a switch's real
+   * consumption via a smart socket on its power input would then see that
+   * same draw counted twice (once via the socket, once via this AP).
+   */
   async _migrateCapabilities() {
+    if (this.hasCapability('measure_power')) {
+      await this.removeCapability('measure_power').catch((err) => this.error(err));
+    }
     for (const capabilityId of NEW_CAPABILITIES) {
       if (!this.hasCapability(capabilityId)) {
         await this.addCapability(capabilityId).catch((err) => this.error(err));
@@ -56,11 +68,11 @@ class FortiApDevice extends NetworkDeviceBase {
     // We only find out whether this AP's power can be measured once we've
     // actually seen a managed-switch response - drop the capability if it
     // turns out we can never resolve a wattage for it, so the device tile
-    // doesn't show a permanently empty Energy field.
+    // doesn't show a permanently empty field.
     if (!this._poeChecked) {
       this._poeChecked = true;
-      if (!poePort && this.hasCapability('measure_power')) {
-        await this.removeCapability('measure_power').catch((err) => this.error(err));
+      if (!poePort && this.hasCapability('ap_poe_watts')) {
+        await this.removeCapability('ap_poe_watts').catch((err) => this.error(err));
       }
     }
 
@@ -69,19 +81,25 @@ class FortiApDevice extends NetworkDeviceBase {
     return {
       connected: ap.connected,
       capabilities: {
-        measure_power: poePort ? poePort.poeWatts : undefined,
+        // Not `measure_power`: see _migrateCapabilities() for why this
+        // shouldn't count toward Homey's home Energy total.
+        ap_poe_watts: poePort ? poePort.poeWatts : undefined,
         ap_client_count: ap.clientCount,
         ap_clients_2ghz: radios.clients2ghz,
         ap_clients_5ghz: radios.clients5ghz,
         ap_clients_6ghz: radios.clients6ghz,
         ap_throughput_rx: radios.throughputRxMbps,
         ap_throughput_tx: radios.throughputTxMbps,
+        // Unlike ap_poe_watts, this comes straight from the AP itself (its
+        // own negotiated PoE class) - works with any power source, not just
+        // a FortiSwitch.
+        ap_poe_class: ap.poeClass,
       },
     };
   }
 
   _powerCapabilityId() {
-    return 'measure_power';
+    return 'ap_poe_watts';
   }
 }
 

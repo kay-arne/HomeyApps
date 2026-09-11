@@ -53,7 +53,8 @@ class FortiApDriver extends Homey.Driver {
             'ap_clients_6ghz',
             'ap_throughput_rx',
             'ap_throughput_tx',
-            'measure_power',
+            'ap_poe_watts',
+            'ap_poe_class',
           ],
           settings: { pollInterval: 60 },
         }));

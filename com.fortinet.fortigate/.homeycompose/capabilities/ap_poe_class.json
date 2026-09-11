@@ -1,0 +1,10 @@
+{
+  "type": "string",
+  "title": {
+    "en": "PoE class"
+  },
+  "icon": "/assets/capability_icons/power.svg",
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor"
+}

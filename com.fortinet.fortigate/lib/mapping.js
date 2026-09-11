@@ -203,8 +203,25 @@ function mapAP(raw) {
   const clientCount = clientCountFromRadios !== undefined
     ? clientCountFromRadios
     : toNumber(pick(raw, ['clients', 'client-count', 'client_count']));
+
+  // The AP reports its own negotiated PoE class directly - unlike the actual
+  // wattage (which needs switch-side port correlation, see findApPoePort()),
+  // this works for any AP regardless of whether it's powered by a
+  // FortiSwitch, a third-party switch, or a plain injector. poe_mode_oper is
+  // the currently-active class ("full"/"high"/"auto"); poe_mode (which may
+  // carry a "(auto)" suffix, e.g. "full(auto)") is the configured fallback.
+  // "invalid" means FortiOS has nothing meaningful to report here.
+  const poeModeRaw = pick(raw, ['poe_mode_oper', 'poe-mode-oper']) || pick(raw, ['poe_mode', 'poe-mode']);
+  let poeClass;
+  if (typeof poeModeRaw === 'string') {
+    const word = poeModeRaw.split(/[^a-z]/i)[0];
+    if (word && word.toLowerCase() !== 'invalid') {
+      poeClass = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }
+  }
+
   return {
-    serial, name, connected, ip, uplinkSwitchId, uplinkPort, radios, clientCount, raw,
+    serial, name, connected, ip, uplinkSwitchId, uplinkPort, radios, clientCount, poeClass, raw,
   };
 }
 

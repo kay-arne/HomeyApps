@@ -2,8 +2,8 @@
 
 A Homey (Pro) app that discovers the FortiSwitch and FortiAP devices managed
 by your FortiGate, lets you add them to Homey as monitored devices, tracks
-their PoE power draw for Homey's Energy feature, and raises Flow alerts for
-connectivity and security events.
+their PoE power draw, port/client/throughput stats, and raises Flow alerts
+for connectivity and security events.
 
 This app talks to your FortiGate over the local network via its REST API —
 nothing goes through the cloud. It needs a **Homey Pro**, since it requires
@@ -14,11 +14,20 @@ local LAN access.
 - **Discovery & pairing** — after you add your FortiGate once, the app can
   list every FortiSwitch and FortiAP it currently manages so you can add the
   ones you want as Homey devices, each individually monitored from then on.
-- **Energy monitoring** — each FortiSwitch device reports its total PoE
-  power draw (`measure_power`, the sum of its PoE ports) so it shows up in
-  Homey's Energy insights. Each FortiAP reports the same when the app can
-  work out which switch port powers it (see *Energy monitoring caveats*
-  below).
+- **PoE power monitoring** — each FortiSwitch device reports its total PoE
+  power delivered (sum of its PoE ports) and each FortiAP reports its own
+  PoE draw when the app can work out which switch port powers it (see
+  *PoE monitoring caveats* below). Both use dedicated capabilities
+  (`switch_poe_watts` / `ap_poe_watts`) rather than Homey's standard
+  `measure_power`, so they're **not** counted in Homey's home Energy total —
+  see that section for why.
+- **Switch port monitoring** — ports online vs. total, PoE-active ports vs.
+  PoE-capable ports, and rx/tx throughput per switch.
+- **AP client & throughput monitoring** — connected clients (total and
+  per-band: 2.4/5/6GHz) and rx/tx throughput per AP.
+- **WAN throughput** — on the FortiGate device, once you tell it which
+  interface(s) are your WAN in its settings (FortiOS's monitor API doesn't
+  expose an interface's configured role).
 - **Connectivity alerts** — Flow triggers fire when a switch or AP goes
   offline or comes back, plus a Flow condition to check "is online" and an
   action to refresh a device's data on demand.
@@ -77,20 +86,27 @@ project into the final `app.json` — you don't need to write that by hand.
    to discover through (skipped automatically if you only have one), then
    select the switches/APs you want monitored from the discovered list.
 
-## Energy monitoring caveats — please read
+## PoE monitoring caveats — please read
 
 FortiGate's monitor API reports **PoE output power on switch ports**, not
 the switch's own AC input draw (which the API generally doesn't expose).
 So:
 
-- A FortiSwitch's `measure_power` is the sum of what it's delivering over
-  PoE to connected devices — a good proxy for "load on this switch",
+- A FortiSwitch's `switch_poe_watts` is the sum of what it's delivering
+  over PoE to connected devices — a good proxy for "load on this switch",
   not its total electricity consumption.
-- A FortiAP only gets `measure_power` when the app can match it to the PoE
-  port on a FortiSwitch that powers it. If an AP is powered by a
+- An FortiAP's `ap_poe_watts` is only added when the app can match it to
+  the PoE port on a FortiSwitch that powers it. If an AP is powered by a
   non-FortiSwitch injector, a plain power brick, or the correlation simply
   fails for your setup, that AP is added **without** the power capability
   rather than showing a permanently wrong or empty number.
+- Neither of these use Homey's standard `measure_power` capability, so
+  neither counts toward Homey's home Energy total. That's deliberate: if
+  you track a switch's real consumption with a smart socket on its power
+  input, that reading already includes everything the switch delivers
+  onward over PoE — counting an AP's share again here would double-count
+  it. These capabilities are for monitoring load/health, not for adding up
+  to your home's actual electricity usage.
 
 ## Push alerts via FortiGate Automation (recommended for security events)
 
